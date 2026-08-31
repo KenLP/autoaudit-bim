@@ -1,0 +1,14 @@
+# Machine-local paths to the audit satellites (Phase 3, D3).
+# Copy to audit_services.yaml (gitignored) and adjust per machine.
+# Each satellite runs in ITS OWN Python 3.10 venv — never merge the envs
+# (spatial-qc pins scipy/skimage/rtree; both pin 3.10 vs orchestrator >=3.12).
+# A missing file or entry does not crash: the axis reports "unconfigured".
+lod_validator:
+  python: "C:/path/to/lod-validator/.venv/Scripts/python.exe"
+  cwd:    "C:/path/to/lod-validator"
+spatial_qc:
+  python: "C:/path/to/spatial-qc/.venv/Scripts/python.exe"
+  cwd:    "C:/path/to/spatial-qc"
+revitcontrol:
+  dir:    "C:/path/to/revit-control"
+  python: "C:/path/to/revit-control/.venv/Scripts/python.exe"

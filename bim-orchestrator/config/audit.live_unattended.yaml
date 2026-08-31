@@ -1,0 +1,38 @@
+# LIVE unattended verification profile — SPEC_LIVE_COMBINED §Khối A.
+# Created 2026-07-30 for the first live run of the launch → watchdog → wait
+# path (`scripts/unattended_launch.py --phase launch/wait`), which had never
+# executed against a real Revit.
+#
+# Deliberately SAFE for a first live run:
+#   * dry_run: true      — nothing is committed to the model. The point of
+#                          this profile is the LAUNCH path, not the writes.
+#   * propose_only: true — belt and braces: even a would-be-`auto` Path B
+#                          decision is demoted to `approve`.
+#   * axes off           — IFC satellites are not part of Khối A.
+#
+# Revit MUST be closed before running, or `is_running()` short-circuits the
+# launch and the very thing under test never happens.
+#
+# Run:  $env:REVIT_MCP_VERSION="2027"
+#       uv run bim-orchestrator --audit config/audit.live_unattended.yaml
+name: live_unattended
+rules:
+  - rules.demo.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: true
+  propose_only: true
+unattended:
+  enabled: true
+  revit_exe: "C:/Program Files/Autodesk/Revit 2027/Revit.exe"
+  # A LOCAL .rvt — `launch()` runs Popen([exe, model]), so a cloud path
+  # ("Cloud Models://…") cannot be opened this way. Copy of Downloads/x1.rvt.
+  model_path: "C:/models/your_local_model.rvt"
+  revit_version: 2027

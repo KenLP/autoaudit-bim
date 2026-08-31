@@ -1,0 +1,110 @@
+name: CI
+
+# Gate 1 (2026-07 review): pytest + UI tests/build are REQUIRED gates so the
+# green-suite claim stops drifting with the docs. Ruff is ratcheted — it may
+# not grow past its current baseline while the debt is paid down. Mypy is
+# informational until it is green (192 errors at the baseline), then promote it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# One in-flight run per ref; a new push cancels the previous.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python — tests + ruff ratchet
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bim-orchestrator
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Python floor is 3.12 (pyproject requires-python). Pin CI to the floor so
+      # nothing 3.13+-only slips in unnoticed; the dev machine runs newer.
+      - name: Sync (dev extras)
+        run: uv sync --extra dev --python 3.12
+
+      - name: Pytest
+        run: uv run pytest -q
+
+      - name: Ruff ratchet (must not exceed baseline)
+        env:
+          RUFF_BASELINE: "121"
+        run: |
+          # Count findings from JSON (format-stable), NOT the human "Found N"
+          # line. Branch on ruff's REAL exit code so the ratchet fails CLOSED:
+          #   0 = clean, 1 = findings (count them), >=2 = ruff itself errored.
+          # A parse failure or tool crash must fail the job, never read as
+          # "0 debt" — a ratchet that can't measure must not pass.
+          # NOTE: GitHub runs this with `set -eo pipefail`. ruff exits 1 when it
+          # finds lint — expected here — which under `-e` would abort before we
+          # read $?, so we drop errexit for exactly the ruff call and branch on
+          # the code ourselves.
+          set +e
+          out=$(uv run ruff check src --output-format=json)
+          rc=$?
+          set -e
+          if [ "$rc" -ge 2 ]; then
+            echo "::error::ruff exited $rc (tool/config error) — ratchet cannot measure, failing closed."
+            echo "$out" | head -40
+            exit 1
+          fi
+          found=$(echo "$out" | python -c "import sys,json; print(len(json.load(sys.stdin)))")
+          case "$found" in
+            ''|*[!0-9]*)
+              echo "::error::could not parse ruff finding count (got '$found') — failing closed."
+              exit 1 ;;
+          esac
+          echo "ruff src findings: $found (baseline $RUFF_BASELINE)"
+          if [ "$found" -gt "$RUFF_BASELINE" ]; then
+            echo "::error::ruff findings ($found) exceed baseline ($RUFF_BASELINE) — fix the new lint or justify raising the baseline."
+            uv run ruff check src || true
+            exit 1
+          fi
+
+      - name: Mypy (informational until green)
+        continue-on-error: true
+        run: uv run mypy src
+
+  ui:
+    name: AutoAudit UI — tests + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: autoaudit-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: autoaudit-ui/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

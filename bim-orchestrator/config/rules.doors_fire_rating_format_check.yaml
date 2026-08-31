@@ -1,0 +1,34 @@
+scenario: doors_fire_rating_format_check
+target_category: Doors
+rules:
+- id: doors.fire_rating.format_check
+  parameter: Fire Rating
+  requirement: matches_regex
+  pattern: ^(0\.5|1|1\.5|2|3)\s+HR$
+  category: Doors
+  severity_tag: naming_violation
+  severity_level: severity_medium
+  description: Fire Rating must follow format 'X HR' where X is 0.5, 1, 1.5, 2, or
+    3
+  autofill:
+    strategy: normalize
+    normalize_kind: fire_rating
+    normalize_format: '{h} HR'
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: auto
+  remediation:
+    action: set_parameter
+    new_value_strategy: inferred
+    target: type
+  requires_human: false
+  extraction_meta:
+    confidence: 1.0
+    source_text: Fire Rating must follow format 'X HR' where X is 0.5, 1, 1.5, 2,
+      or 3
+    source_location: Rule Builder (UI)
+    extracted_by: ''
+    extracted_at: ''
+    execution_status: executable
+geometry_rules: []

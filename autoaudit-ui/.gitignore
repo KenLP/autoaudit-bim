@@ -1,0 +1,31 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# The repo-root .gitignore has an unanchored `runs/` pattern meant for
+# bim-orchestrator's per-run artifact folders (audit output) — being
+# unanchored, it also matches this app's src/features/runs/ (React feature
+# folder for the Run/Results pages), silently untracking it. Re-include it
+# here since the fix belongs with the app, not the artifact-folder rule.
+!src/features/runs/

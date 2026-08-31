@@ -1,0 +1,30 @@
+# AutoAudit profile — one file = one audit definition (Phase 3, P3-1).
+#
+# `bim-orchestrator --audit config/audit.demo.yaml` runs the LOI rules below
+# PLUS the enabled IFC axes, into one run folder + one verification report.
+# Edit ifc_path to a real export before enabling an axis (the loader fails
+# fast, listing every missing path, BEFORE anything runs).
+name: demo
+rules:                       # LOI axis — same semantics as --rules (merge, K6)
+  # Relative paths resolve against THIS file's directory first, then cwd.
+  - rules.demo.yaml
+axes:
+  lod:
+    enabled: false           # flip on after exporting the IFC by hand (D4)
+    ifc_path: "D:/models/VillaDemo.ifc"
+    required_lod: 300        # model-wide (D10)
+    classes: null            # null = all signature classes
+  spatial:
+    enabled: false
+    ifc_path: "D:/models/VillaDemo.ifc"   # usually the same export as lod
+    rules: "width,headroom,turning,door"  # spatial-qc subset
+    required_width_m: 1.2    # the only MCP-side threshold override (D9)
+    subtract_furniture: false
+    doors_egress_only: false
+run:
+  mode: run                  # check | run | run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: false
+unattended:
+  enabled: false             # P3-3 — RevitControl watchdog wrap

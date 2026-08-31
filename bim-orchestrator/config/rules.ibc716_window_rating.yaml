@@ -1,0 +1,34 @@
+scenario: ibc716_window_rating
+target_category: Windows
+rules:
+  # IBC §716 on WINDOWS — same table-driven relational mechanism as the doors
+  # rule (rules.ibc716_door_rating.yaml), different code table: Table 716.1(3)
+  # fire WINDOW assembly ratings, via lookup 'ibc716_windows'. Authored
+  # 2026-08-18 for the AU Case 2 demo so the lookup-table capability shows on
+  # a category the audience has NOT already seen twice.
+  #
+  # The table self-declares its host keys (host.Fire Rating + host.Function —
+  # the second one is Revit's BUILT-IN wall Function, real data on Snowdon).
+  # A window in a not-rated wall is exempt (compliant); a rated interior wall
+  # over 1 hr has NO row on purpose (this glazing class is not permitted
+  # there) → manual review; blank/unreadable wall rating → manual review.
+  - id: windows.fire_rating.ibc716_by_host
+    parameter: Fire Rating
+    requirement: relation_compare
+    category: Windows
+    compare_kind: fire_rating
+    operator: ">="
+    lookup: ibc716_windows
+    severity_tag: rule_violation
+    severity_level: severity_high
+    description: >
+      IBC §716 — a fire window assembly's rating must be at least the value
+      required by its host wall's function and fire-resistance rating (Table
+      716.1(3), via lookup table 'ibc716_windows'). Windows in non-rated
+      walls are exempt; interior walls over 1 hr take no fire-protection-rated
+      glazing at all, so those route to manual review.
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue

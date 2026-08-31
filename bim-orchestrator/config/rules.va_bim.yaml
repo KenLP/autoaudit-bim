@@ -1,0 +1,1791 @@
+scenario: va_bim
+target_category:
+- Rooms
+- Sheets
+- Generic Models
+- Mechanical Equipment
+- Electrical Equipment
+- Structural Columns
+- Structural Framing
+- Walls
+- Floors
+- Roofs
+- Doors
+- Windows
+- Ceilings
+- Plumbing Fixtures
+- Stairs
+- Lighting Fixtures
+- Specialty Equipment
+- Furniture
+- Communication Devices
+- Nurse Call Devices
+- Security Devices
+- Data Devices
+- Casework
+- Electrical Fixtures
+- Ducts
+- Duct Fittings
+- Duct Accessories
+- Air Terminals
+- Duct Insulations
+- Flex Ducts
+- Pipes
+- Pipe Fittings
+- Pipe Accessories
+- Pipe Insulations
+- Flex Pipes
+- Sprinklers
+- Cable Trays
+- Cable Tray Fittings
+- Conduits
+- Conduit Fittings
+- Fire Alarm Devices
+- Areas
+rules:
+- id: va.bim.room.guid.required
+  parameter: UniqueId
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room (space) element must carry a non-empty Globally Unique Identifier
+    (GUID), assigned via SEPS or the BIM authoring tool, and this GUID must be maintained
+    throughout project development and delivery.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.82
+    source_text: Unique GUIDs, assigned in the Space and Equipment Planning Tool (SEPS)
+      or in the BIM tools, must be maintained throughout project development and delivery
+      to support data workflows that require keeping track of space and equipment.
+    source_location: VA BIM Standard §2.2, p.11
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Revit's built-in 'UniqueId' parameter is the closest native equivalent to the
+      GUID described; BIM Manager should confirm the project uses SEPS-assigned GUIDs
+      stored in a shared parameter if 'UniqueId' is not the correct binding.
+    - GUID must persist through room name changes and other modifications per footnote
+      8.
+    - Edit 'parameter' to match the actual shared parameter name if SEPS exports GUIDs
+      to a custom field (e.g. 'SEPS_GUID').
+- id: va.bim.properties.titleblock_sheet_number_populated
+  parameter: Sheet Number
+  requirement: present_and_nonempty
+  category: Sheets
+  severity_tag: missing_required_param
+  description: Titleblock Sheet Number must be populated and automatically associated
+    throughout the project (VA BIM Standard §2.5).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.9
+    source_text: Titleblock identification values (e.g., sheet number and sheet name)
+      must be associated and automatically populated and remain current throughout
+      the project.
+    source_location: VA BIM Standard §2.5 p.12
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.bim.properties.titleblock_sheet_name_populated
+  parameter: Sheet Name
+  requirement: present_and_nonempty
+  category: Sheets
+  severity_tag: missing_required_param
+  description: Titleblock Sheet Name must be populated and automatically associated
+    throughout the project (VA BIM Standard §2.5).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.9
+    source_text: Titleblock identification values (e.g., sheet number and sheet name)
+      must be associated and automatically populated and remain current throughout
+      the project.
+    source_location: VA BIM Standard §2.5 p.12
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.bim.properties.wall_fire_rating_in_type
+  parameter: Fire Rating
+  requirement: present_and_nonempty
+  category: Walls
+  severity_tag: fire_safety_change
+  description: Fire rating fill patterns must be constructed within 3D wall types
+    so that the partition's rating is shown through all scales and views. Walls must
+    carry a non-empty Fire Rating value on their type.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.82
+    source_text: Fire rating fill patterns must be constructed within 3D wall types
+      so that the partition's respective rating is shown through all scales and types
+      of views, including 2D Drawings.
+    source_location: VA BIM Standard §2.5 p.12
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - The clause implies all wall types must encode their fire rating within the type
+      definition (not as a manual annotation).
+    - A blank Fire Rating on a wall type may indicate the partition has no rating,
+      but the BIM team must explicitly set 'Not Rated' or equivalent rather than leaving
+      empty.
+- id: va.bim.object_tool.classification_required
+  parameter: OmniClass Number
+  requirement: present_and_nonempty
+  category: Generic Models
+  severity_tag: missing_required_param
+  description: Any new BIM object must carry a proper classification (e.g. OmniClass)
+    designating the real-world element it represents, enabling correct data reporting
+    and export.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: true
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.72
+    source_text: If a new object is created then it must be designated as the real
+      world element it represents, having the proper classification and/or data attributes
+      for the project and object type, and must report properly from the BIM software
+      as the objects they represent rather than unassigned graphic primitives.
+    source_location: VA BIM Standard §VA p.13
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - OmniClass Number is the standard Revit classification parameter. Alternatively,
+      the project BxP may designate a different classification scheme (e.g. UniFormat,
+      CSI MasterFormat) — edit parameter name to match.
+    - Rule is scoped to Generic Models as the highest-risk category for misclassification;
+      BIM Manager may broaden to all categories.
+- id: va.bim.model_props.omniclass_rooms.required
+  parameter: OmniClass Number
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: All Room/Space objects must have an OmniClass code assigned (Tables
+    13 and 14 in combination), as required by VA BIM Standard §2.11.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.88
+    source_text: OmniClass Codes (latest published version) must be assigned to all
+      spaces, building equipment, systems, and underground utilities. Spatial Objects
+      must maintain the codes provided in the SEPS BIM Export file.
+    source_location: VA BIM Standard §2.11, p.14
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Use OmniClass Tables 13 and 14 in combination for spaces.
+    - Spatial objects that originate from the SEPS BIM Export must retain the codes
+      provided therein; new spaces not in the PFD must have the appropriate OmniClass
+      code applied.
+- id: va.bim.model_props.omniclass_equipment.required
+  parameter: OmniClass Number
+  requirement: present_and_nonempty
+  category: Mechanical Equipment
+  severity_tag: missing_required_param
+  description: All building equipment objects must have an OmniClass code assigned
+    (Table 23 for building equipment), as required by VA BIM Standard §2.11.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.87
+    source_text: 'OmniClass Codes (latest published version) must be assigned to all
+      spaces, building equipment, systems, and underground utilities. Use OmniClass
+      Tables 21, 22, and 23 for building assets: Table 21 for systems, Table 22 to
+      align modeled technical solutions with specification sections, and Table 23
+      for building equipment.'
+    source_location: VA BIM Standard §2.11, p.14
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - OmniClass Table 23 applies to building equipment (e.g. Mechanical Equipment,
+      Electrical Equipment, Plumbing Fixtures).
+    - Table 21 is for systems; Table 22 aligns with specification sections.
+- id: va.bim.model_props.omniclass_electrical.required
+  parameter: OmniClass Number
+  requirement: present_and_nonempty
+  category: Electrical Equipment
+  severity_tag: missing_required_param
+  description: All electrical equipment objects must have an OmniClass code assigned
+    (Table 23), as required by VA BIM Standard §2.11.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.86
+    source_text: OmniClass Codes (latest published version) must be assigned to all
+      spaces, building equipment, systems, and underground utilities.
+    source_location: VA BIM Standard §2.11, p.14
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - OmniClass Table 23 applies to building equipment including electrical equipment.
+- id: va.bim.model_props.omniclass_plumbing.required
+  parameter: OmniClass Number
+  requirement: present_and_nonempty
+  category: Plumbing Fixtures
+  severity_tag: missing_required_param
+  description: All plumbing fixture objects must have an OmniClass code assigned (Table
+    23), as required by VA BIM Standard §2.11.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.85
+    source_text: OmniClass Codes (latest published version) must be assigned to all
+      spaces, building equipment, systems, and underground utilities.
+    source_location: VA BIM Standard §2.11, p.14
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - OmniClass Table 23 applies to building equipment including plumbing fixtures.
+- id: va.room.area.present
+  parameter: Area
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must have a non-empty Area (Net Square Footage) value modeled
+    from BIM geometry (VA BIM Standard §2.13.3).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.91
+    source_text: The Net Square Footage (NSF) must be modeled for each functional
+      room and space.
+    source_location: VA BIM Standard §2.13.3, p.15
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - NSF must derive from bounding BIM geometry — not manually keyed. Revit Room
+      'Area' parameter is geometry-driven, so presence implies model connectivity.
+    - PFD NSF and proposed design NSF must be shown on all 2D plans in each room and
+      space — plan annotation is a separate deliverable check beyond model parameter
+      presence.
+- id: va.room.number.present
+  parameter: Number
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must have a non-empty Number value to support GUID/code
+    tracking per the VA Project BIM Export file (VA BIM Standard §2.13.2).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.88
+    source_text: Coding noted in Appendix 3 - VA Spatial & Equipment Data from the
+      SEPS BIM Export file must be maintained with the Spatial Object throughout project
+      development so that the specific space object can be tracked.
+    source_location: VA BIM Standard §2.13.2, p.15
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Room Number feeds downstream SEPS/FM tracking; must match codes from the Project
+      BIM Export file.
+    - AE and GC must not alter identifiers — manual fixability enforced to prevent
+      accidental auto-overwrite.
+- id: va.room.name.present
+  parameter: Name
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must have a non-empty Name reflecting its functional classification
+    (e.g., Medical Exam Room, Waiting Room) as defined in the PFD (VA BIM Standard
+    §2.13.3).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.9
+    source_text: Rooms must be represented and broken down into functional areas (e.g.,
+      Medical Exam Room, Laser Treatment Room, Waiting Room, etc.) as defined in the
+      PFD.
+    source_location: VA BIM Standard §2.13.3, p.15
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Name must reflect PFD functional classification, not a generic label.
+    - Rooms within the same physical area but with different functional classifications
+      must be modeled as separate Room objects — this rule fires per Room instance.
+- id: va.room.department.present
+  parameter: Department
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty Department value so it can be associated
+    with its parent Area (department aggregate) per VA BIM Standard §2.13.1.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.82
+    source_text: when rooms are aggregated into Departments they must also be modeled
+      as 'Areas.'
+    source_location: VA BIM Standard §2.13.1, p.15
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Revit 'Department' on Rooms is the standard linkage mechanism to Area aggregation
+      in Revit. If project uses a different shared parameter for department association,
+      update 'parameter' accordingly.
+    - The companion check — that corresponding Area elements exist — is not model-checkable
+      via a Room rule alone; flag separately.
+- id: va.room.department.required
+  parameter: Department
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must be assigned to a VA Medical Center defined Department
+    for space management and square footage analysis (VA BIM Standard §2.13).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.93
+    source_text: Rooms must be grouped into the Medical Center defined Departments
+      for space management and square footage analysis, and color coded to help distinguish
+      space belonging to the different organizations.
+    source_location: VA BIM Standard p.16 §2.13 / §VA
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Department values are defined by the VA Medical Center organisational arrangement
+      — not a free-text field; BIM team must confirm the approved department list.
+    - Color coding by department is a view/graphic override concern, not a model parameter;
+      flagged in follow_ups.
+- id: va.room.area.positive
+  parameter: Area
+  requirement: numeric_compare
+  threshold: 0.0
+  unit: ft²
+  operator: '>'
+  category: Rooms
+  severity_tag: geometric_violation
+  description: Every Room must have a positive computed area so that Circulation Factors
+    can be correctly derived from BIM floorplate spatial values (VA BIM Standard §2.13).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.8
+    source_text: 'Circulation Factors: Must be calculated based on the spatial values
+      derived from the floorplates in BIM.'
+    source_location: VA BIM Standard p.16 §2.13 / §VA
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Area is a Revit computed parameter driven by room boundary geometry; a zero/null
+      value indicates an unbounded or incorrectly placed room.
+    - AEs should consult their BIM authoring application vendor for the recommended
+      room area measurement method per VA Standards Alert 16-002a.
+- id: va.room.seps_room_code.required
+  parameter: SEPS Room Code
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty SEPS Room Code to enable tracking
+    between BIM and the Room Contents List.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.91
+    source_text: must include the individual equipment item names, location (e.g.,
+      SEPS Room Code, Room GUID, Project Room Number, and English Name), JSN, required
+      data codes, VA Acquisition Codes, utility codes, etc.
+    source_location: p.18 §2.14.7
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - SEPS Room Code is a VA-specific shared parameter; add via Manage > Project Parameters
+      if not already present.
+    - This coding must be maintained or linked with the PRC/ASE Equipment Object throughout
+      project development.
+- id: va.room.room_guid.required
+  parameter: Room GUID
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty Room GUID for traceability between
+    BIM and the Room Contents List.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.89
+    source_text: must include the individual equipment item names, location (e.g.,
+      SEPS Room Code, Room GUID, Project Room Number, and English Name)
+    source_location: p.18 §2.14.7
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Room GUID is a VA-specific shared parameter; add via Manage > Project Parameters
+      if not already present.
+- id: va.room.project_room_number.required
+  parameter: Number
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty Project Room Number for traceability
+    between BIM and the Room Contents List.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.93
+    source_text: must include the individual equipment item names, location (e.g.,
+      SEPS Room Code, Room GUID, Project Room Number, and English Name)
+    source_location: p.18 §2.14.7
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Maps to the standard Revit 'Number' parameter on Rooms; ensure it matches the
+      Project Room Number used in the SEPS BIM Export file.
+- id: va.room.english_name.required
+  parameter: Name
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty English Name (Room Name) consistent
+    with the Room Contents List and 2D plans.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.93
+    source_text: must include the individual equipment item names, location (e.g.,
+      SEPS Room Code, Room GUID, Project Room Number, and English Name)
+    source_location: p.18 §2.14.7
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.room.jsn.required
+  parameter: JSN
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty JSN (Joint Services Number) linking
+    the room to equipment in the Room Contents List.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.88
+    source_text: JSN, required data codes, VA Acquisition Codes, utility codes, etc.,
+      for the equipment located in each room as provided in the original SEPS BIM
+      Export file
+    source_location: p.18 §2.14.7
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - JSN = Joint Services Number; SEPS uses this to associate equipment to the room.
+    - JSN is a VA-specific shared parameter; add via Manage > Project Parameters if
+      not already present.
+- id: va.room.va_acquisition_code.required
+  parameter: VA Acquisition Code
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty VA Acquisition Code as required by
+    the Room Contents List data specification.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.87
+    source_text: JSN, required data codes, VA Acquisition Codes, utility codes, etc.,
+      for the equipment located in each room as provided in the original SEPS BIM
+      Export file
+    source_location: p.18 §2.14.7
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Equipment with Acquisition Code R (not in SEPS) must have similar coding created
+      by the AE for tracking.
+    - VA Acquisition Code is a VA-specific shared parameter; add via Manage > Project
+      Parameters if not already present.
+- id: va.room.utility_codes.required
+  parameter: Utility Codes
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry non-empty Utility Codes as required by the Room
+    Contents List data specification.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.85
+    source_text: JSN, required data codes, VA Acquisition Codes, utility codes, etc.,
+      for the equipment located in each room as provided in the original SEPS BIM
+      Export file
+    source_location: p.18 §2.14.7
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Utility Codes are a VA-specific shared parameter; add via Manage > Project Parameters
+      if not already present.
+- id: va.room.ase_identified.required
+  parameter: ASE Designation
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Rooms containing Architecturally Significant Equipment (ASE) must have
+    the ASE designation populated in the model.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.82
+    source_text: all rooms containing ASE must be identified in the Model and graphically
+      on the 2D plans with Room Name, SEPS Room Code, PFD NSF and Designed NSF, the
+      equipment name and JSN number, and utility service codes.
+    source_location: p.18 §2.15
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - ASE = Architecturally Significant Equipment. Only rooms containing ASE require
+      this designation.
+    - ASE Designation is a VA-specific shared parameter; add via Manage > Project
+      Parameters if not already present.
+    - The required electronic codes should NOT be visibly shown on 2D plans.
+- id: va.room.pfd_nsf.required
+  parameter: PFD NSF
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Rooms containing ASE must have PFD NSF (Program for Design Net Square
+    Footage) populated in the model.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.83
+    source_text: all rooms containing ASE must be identified in the Model and graphically
+      on the 2D plans with Room Name, SEPS Room Code, PFD NSF and Designed NSF, the
+      equipment name and JSN number, and utility service codes.
+    source_location: p.18 §2.15
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Applies only to rooms containing ASE. Use scope_filter on ASE Designation if
+      scoping is required.
+    - PFD NSF is a VA-specific shared parameter; add via Manage > Project Parameters
+      if not already present.
+- id: va.room.designed_nsf.required
+  parameter: Designed NSF
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Rooms containing ASE must have Designed NSF (Designed Net Square Footage)
+    populated in the model.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.83
+    source_text: all rooms containing ASE must be identified in the Model and graphically
+      on the 2D plans with Room Name, SEPS Room Code, PFD NSF and Designed NSF, the
+      equipment name and JSN number, and utility service codes.
+    source_location: p.18 §2.15
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Applies only to rooms containing ASE. Use scope_filter on ASE Designation if
+      scoping is required.
+    - Designed NSF is a VA-specific shared parameter; add via Manage > Project Parameters
+      if not already present.
+- id: va.arch.wall.fire_rating.required
+  parameter: Fire Rating
+  requirement: present_and_nonempty
+  scope_filter:
+    param: Function
+    pattern: ^(Interior|Retaining|Core-shaft)$
+  category: Walls
+  severity_tag: fire_safety_change
+  description: Interior partitions, fire-rated partitions, and smoke barriers must
+    include fire resistance ratings in wall object properties.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.82
+    source_text: Interior Partitions, Fire-Rated Partitions & Smoke Barriers – Must
+      be modeled to include fire resistance ratings in the wall object properties.
+    source_location: VA BIM Standard §2.18.2 p.21
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Scope filter uses Revit 'Function' parameter to target interior walls; BIM team
+      should verify if all fire-rated partitions and smoke barriers carry this function
+      value or adjust scope_filter accordingly.
+    - Wall fill patterns must also graphically depict appropriate construction in
+      2D plansets — not model-checkable via parameter rule.
+- id: va.arch.door.finish_info.required
+  parameter: Finish
+  requirement: present_and_nonempty
+  category: Doors
+  severity_tag: missing_required_param
+  description: Door objects must include finish information as part of required door
+    properties.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.88
+    source_text: Properties of door objects must include finish information, door
+      swing, vision panels, seals, acoustical properties, hardware, locks and keying,
+      electrical requirements, and applicable fire resistance ratings.
+    source_location: VA BIM Standard §2.18.2 p.21
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.arch.door.fire_rating.required
+  parameter: Fire Rating
+  requirement: present_and_nonempty
+  category: Doors
+  severity_tag: fire_safety_change
+  description: Door objects must include applicable fire resistance ratings.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.92
+    source_text: Properties of door objects must include finish information, door
+      swing, vision panels, seals, acoustical properties, hardware, locks and keying,
+      electrical requirements, and applicable fire resistance ratings.
+    source_location: VA BIM Standard §2.18.2 p.21
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.arch.door.acoustic_rating.required
+  parameter: Acoustic Rating
+  requirement: present_and_nonempty
+  category: Doors
+  severity_tag: missing_required_param
+  description: Door objects must include acoustical properties.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.87
+    source_text: Properties of door objects must include finish information, door
+      swing, vision panels, seals, acoustical properties, hardware, locks and keying,
+      electrical requirements, and applicable fire resistance ratings.
+    source_location: VA BIM Standard §2.18.2 p.21
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.arch.ceiling.fire_rating.required
+  parameter: Fire Rating
+  requirement: present_and_nonempty
+  category: Ceilings
+  severity_tag: fire_safety_change
+  description: Ceiling properties must include fire ratings.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.92
+    source_text: Properties of ceilings must include fire ratings and sound transmission
+      coefficients.
+    source_location: VA BIM Standard §2.18.2 p.21
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.casework.length.positive
+  parameter: Length
+  requirement: positive_number
+  category: Casework
+  severity_tag: geometric_violation
+  description: Casework and countertops must be modeled to correct length/width dimension
+    (VA BIM Standard §2.18.2).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.82
+    source_text: Casework and countertops must be modeled to correct dimensions (length/width,
+      depth, and height).
+    source_location: VA BIM Standard §2.18.2, p.22
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - '''Correct dimensions'' means matching design-intent drawings; a positive_number
+      check confirms the field is populated and non-zero, but dimensional accuracy
+      vs. drawings requires human review.'
+- id: va.casework.depth.positive
+  parameter: Depth
+  requirement: positive_number
+  category: Casework
+  severity_tag: geometric_violation
+  description: Casework and countertops must be modeled to correct depth dimension
+    (VA BIM Standard §2.18.2).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.82
+    source_text: Casework and countertops must be modeled to correct dimensions (length/width,
+      depth, and height).
+    source_location: VA BIM Standard §2.18.2, p.22
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.casework.height.positive
+  parameter: Height
+  requirement: positive_number
+  category: Casework
+  severity_tag: geometric_violation
+  description: Casework and countertops must be modeled to correct height dimension
+    (VA BIM Standard §2.18.2).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.82
+    source_text: Casework and countertops must be modeled to correct dimensions (length/width,
+      depth, and height).
+    source_location: VA BIM Standard §2.18.2, p.22
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.mepft.pipe.min_diameter
+  parameter: Diameter
+  requirement: numeric_compare
+  threshold: 25.4
+  unit: mm
+  operator: '>='
+  category: Pipes
+  severity_tag: geometric_violation
+  description: All pipe elements with a diameter of 1.0 inch (25.4 mm) or larger must
+    be modeled (VA BIM Standard §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.9
+    source_text: All system elements 1.0 inches in diameter and larger (e.g., general
+      plumbing, fire protection, etc. but not individual electrical cables unless
+      in Patient Headwalls) must be modeled.
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - 'Rule flags any pipe in the model whose Diameter parameter is below 1.0 inch
+      — the intent is that elements below this threshold should NOT be in the model,
+      but the practical check is: any modeled pipe must be ≥ 1.0 inch unless it is
+      inside a Patient Headwall.'
+    - Patient Headwall exception (individual electrical cables) is a scope nuance
+      requiring domain mapping to identify headwall-hosted elements.
+- id: va.mepft.duct.min_dimension
+  parameter: Width
+  requirement: numeric_compare
+  threshold: 101.6
+  unit: mm
+  operator: '>='
+  category: Ducts
+  severity_tag: geometric_violation
+  description: Ducts with any dimension of 4 inches (101.6 mm) or greater must be
+    modeled (VA BIM Standard §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.82
+    source_text: other elements (ducts, cable trays, etc.) with a dimension 4 inches
+      and over must be modeled.
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - The '4 inch' threshold applies to ANY dimension (width or height for rectangular
+      ducts, diameter for round ducts). This rule checks Width; a companion rule checks
+      Height/Diameter.
+    - 'The check logic is analogous to the pipe rule: any duct in the model should
+      meet the minimum modeled dimension.'
+- id: va.mepft.duct.min_height
+  parameter: Height
+  requirement: numeric_compare
+  threshold: 101.6
+  unit: mm
+  operator: '>='
+  category: Ducts
+  severity_tag: geometric_violation
+  description: Rectangular ducts with a height dimension of 4 inches (101.6 mm) or
+    greater must be modeled (VA BIM Standard §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.8
+    source_text: other elements (ducts, cable trays, etc.) with a dimension 4 inches
+      and over must be modeled.
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Companion rule to va.mepft.duct.min_dimension covering the height dimension
+      of rectangular ducts.
+- id: va.mepft.cable_tray.min_dimension
+  parameter: Width
+  requirement: numeric_compare
+  threshold: 101.6
+  unit: mm
+  operator: '>='
+  category: Cable Trays
+  severity_tag: geometric_violation
+  description: Cable trays with any dimension of 4 inches (101.6 mm) or greater must
+    be modeled (VA BIM Standard §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.83
+    source_text: other elements (ducts, cable trays, etc.) with a dimension 4 inches
+      and over must be modeled.
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.mepft.sprinkler.fire_rating.required
+  parameter: Fire Rating
+  requirement: present_and_nonempty
+  category: Sprinklers
+  severity_tag: fire_safety_change
+  description: Fire protection model elements must include fire ratings (VA BIM Standard
+    §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.88
+    source_text: Fire protection models must include fire ratings, sprinkler medium,
+      pressure and flow volume.
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.mepft.domestic_water.system_name.required
+  parameter: System Name
+  requirement: present_and_nonempty
+  category: Pipes
+  severity_tag: missing_required_param
+  description: All Domestic Water System pipes must have the system name (e.g., 'Domestic
+    Water') populated (VA BIM Standard §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.85
+    source_text: all of the supply and return elements, components, and distribution
+      systems of the Domestic Water System must be modeled regardless of size, with
+      properties for the name of the system (e.g., Domestic Water).
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Rule applies to ALL Domestic Water pipes regardless of diameter (the standard
+      explicitly states 'regardless of size' for this system).
+- id: va.mepft.domestic_water.material.required
+  parameter: Material
+  requirement: present_and_nonempty
+  scope_filter:
+    param: System Name
+    pattern: (?i)domestic.?water
+  category: Pipes
+  severity_tag: missing_required_param
+  description: Domestic Water System pipes must have the pipe material (e.g., copper,
+    PVC) populated (VA BIM Standard §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.86
+    source_text: all of the supply and return elements, components, and distribution
+      systems of the Domestic Water System must be modeled regardless of size, with
+      properties for ... material (copper, PVC, etc.)
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.mepft.domestic_water.diameter.required
+  parameter: Diameter
+  requirement: present_and_nonempty
+  scope_filter:
+    param: System Name
+    pattern: (?i)domestic.?water
+  category: Pipes
+  severity_tag: missing_required_param
+  description: Domestic Water System pipes must have diameter populated (VA BIM Standard
+    §2.18.8).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.87
+    source_text: all of the supply and return elements, components, and distribution
+      systems of the Domestic Water System must be modeled regardless of size, with
+      properties for ... diameter of pipe
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.mepft.pipe_insulation.modeled
+  parameter: Thickness
+  requirement: numeric_compare
+  threshold: 0.0
+  operator: '>'
+  category: Pipe Insulations
+  severity_tag: missing_required_param
+  description: Pipe insulation must be modeled (thickness > 0) for piping distribution
+    systems per VA BIM Standard §2.18.8.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.8
+    source_text: pumps and piping distribution systems (including modeling for pipe
+      slope and insulation)
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - The standard requires insulation to be modeled as a distinct element (Pipe Insulations
+      category), not just a parameter on the pipe.
+- id: va.mepft.duct_insulation.modeled
+  parameter: Thickness
+  requirement: numeric_compare
+  threshold: 0.0
+  operator: '>'
+  category: Duct Insulations
+  severity_tag: missing_required_param
+  description: Duct insulation must be modeled (thickness > 0) for duct and equipment
+    per VA BIM Standard §2.18.8.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.8
+    source_text: air distribution and evacuation systems (including modeling for duct
+      and equipment insulation)
+    source_location: VA BIM Standard §2.18.8 p.23
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.room.name.required
+  parameter: Name
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must have a non-empty Name; SEPS room names must appear
+    in room/department floorplans (VA BIM Standard §4.5.2).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.9
+    source_text: All SEPS room codes, room names, and actual square footages must
+      be shown in each room or department floorplans.
+    source_location: VA BIM Standard §4.5.2, p.30
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.room.area.positive__2
+  parameter: Area
+  requirement: numeric_compare
+  threshold: 0.0
+  unit: ft²
+  operator: '>'
+  category: Rooms
+  severity_tag: geometric_violation
+  description: Every Room must have a positive computed Area; actual square footages
+    must be shown per SEPS/PFD comparison requirements (VA BIM Standard §4.5.2).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.88
+    source_text: All SEPS room codes, room names, and actual square footages must
+      be shown in each room or department floorplans.
+    source_location: VA BIM Standard §4.5.2, p.30
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Actual area is compared against SEPS PFD NSF requirements; zero-area rooms indicate
+      a placement or boundary error.
+- id: va.room.department.required__2
+  parameter: Department
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Every Room must carry a non-empty Department value to support departmental
+    blocking, stacking, color coding, and DGSF tabulation (VA BIM Standard §4.5.1–4.5.2).
+  autofill:
+    strategy: infer_from_room_name
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: auto
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.85
+    source_text: Departments must be measured in BIM according to VA Space Measurement
+      Standards. Each Department floorplan must be color coded to help in reading
+      the Model and 2D Drawings.
+    source_location: VA BIM Standard §4.5.2, p.30
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Department value drives VA Department Color Coding per §4.5.1.
+    - DGSF (Departmental Gross Square Footage) is rolled up by Department and compared
+      against the SEPS PFD report.
+- id: va.sequencing.phase.applied
+  parameter: Phase Created
+  requirement: present_and_nonempty
+  category: Rooms
+  severity_tag: missing_required_param
+  description: Phase data must be applied and maintained for all design elements (Rooms)
+    in the BIM, equivalent to Schematic Design LOD, to support 4D sequencing.
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.78
+    source_text: Phase data must be applied and maintained for all design elements
+      in the BIM and will be provided by the AE in the project documentation at a
+      level of development equivalent with Schematic Design.
+    source_location: VA BIM Standard §4.5.10 p.33
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Phase data is required for ALL design elements — this rule targets Rooms; companion
+      rules cover Walls, Floors, Ceilings, Doors, Windows, Mechanical Equipment, etc.
+    - LOD equivalence to Schematic Design is a qualitative standard not mechanically
+      checkable; phase presence is the proxy check.
+    - GC uses this data to produce detailed logistics for the site.
+- id: va.sequencing.phase.applied.walls
+  parameter: Phase Created
+  requirement: present_and_nonempty
+  category: Walls
+  severity_tag: missing_required_param
+  description: Phase data must be applied and maintained for all Walls in the BIM
+    to support 4D sequencing (VA §4.5.10).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.8
+    source_text: Phase data must be applied and maintained for all design elements
+      in the BIM.
+    source_location: VA BIM Standard §4.5.10 p.33
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - Revit's built-in 'Phase Created' parameter is the proxy for phase assignment.
+    - 4D animation must cover all structure, envelope, roof, rooms with ASE, and MEP/FT
+      equipment to point of substantial enclosure.
+- id: va.sequencing.phase.applied.floors
+  parameter: Phase Created
+  requirement: present_and_nonempty
+  category: Floors
+  severity_tag: missing_required_param
+  description: Phase data must be applied and maintained for all Floors in the BIM
+    to support 4D sequencing (VA §4.5.10).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.8
+    source_text: Phase data must be applied and maintained for all design elements
+      in the BIM.
+    source_location: VA BIM Standard §4.5.10 p.33
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.sequencing.phase.applied.roofs
+  parameter: Phase Created
+  requirement: present_and_nonempty
+  category: Roofs
+  severity_tag: missing_required_param
+  description: Phase data must be applied and maintained for all Roofs in the BIM
+    to support 4D sequencing (VA §4.5.10).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.8
+    source_text: Phase data must be applied and maintained for all design elements
+      in the BIM.
+    source_location: VA BIM Standard §4.5.10 p.33
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.sequencing.phase.applied.structural_columns
+  parameter: Phase Created
+  requirement: present_and_nonempty
+  category: Structural Columns
+  severity_tag: missing_required_param
+  description: Phase data must be applied and maintained for all Structural Columns
+    in the BIM to support 4D sequencing (VA §4.5.10).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.8
+    source_text: Phase data must be applied and maintained for all design elements
+      in the BIM.
+    source_location: VA BIM Standard §4.5.10 p.33
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.sequencing.phase.applied.structural_framing
+  parameter: Phase Created
+  requirement: present_and_nonempty
+  category: Structural Framing
+  severity_tag: missing_required_param
+  description: Phase data must be applied and maintained for all Structural Framing
+    in the BIM to support 4D sequencing (VA §4.5.10).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.8
+    source_text: Phase data must be applied and maintained for all design elements
+      in the BIM.
+    source_location: VA BIM Standard §4.5.10 p.33
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+- id: va.sequencing.phase.applied.mechanical_equipment
+  parameter: Phase Created
+  requirement: present_and_nonempty
+  category: Mechanical Equipment
+  severity_tag: missing_required_param
+  description: Phase data must be applied and maintained for all Mechanical Equipment
+    in the BIM to support 4D sequencing, especially equipment in rooms containing
+    ASE (VA §4.5.10).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+    llm_safety_critical: false
+  requires_human: false
+  rule_type: parameter_completeness
+  extraction_meta:
+    confidence: 0.78
+    source_text: Phase data must be applied and maintained for all design elements
+      in the BIM ... rooms containing ASE, and MEPFT equipment/systems.
+    source_location: VA BIM Standard §4.5.10 p.33
+    extracted_by: claude-sonnet-4-6
+    extracted_at: '2026-07-15T15:25:28Z'
+    execution_status: executable
+    notes:
+    - ASE = Architectural/Structural/Equipment — rooms with critical equipment that
+      must be enclosed by the 4D animation cutoff.
+    - MEPFT = Mechanical, Electrical, Plumbing, Fire protection, Technology.
+metadata:
+  merged_from:
+  - va_bim_s_tandard_5
+  - va_bim_s_tandard_7
+  - va_bim_s_tandard_8
+  - va_bim_s_tandard_9
+  - va_bim_s_tandard_10
+  - va_bim_s_tandard_11
+  - va_bim_s_tandard_12
+  - 12_when_creating_bim_objects_whether_they_are
+  - va_bim_s_tandard_13
+  - va_bim_s_tandard_14
+  - va_bim_s_tandard_15
+  - va_bim_s_tandard_16
+  - va_bim_s_tandard_17
+  - 19_but
+  - va_bim_s_tandard_18
+  - va_bim_s_tandard_19
+  - va_bim_s_tandard_20
+  - va_bim_s_tandard_21
+  - va_bim_s_tandard_22
+  - va_bim_s_tandard_23
+  - va_bim_s_tandard_24
+  - va_bim_s_tandard_25
+  - va_bim_s_tandard_26
+  - 2_site_survey
+  - 8_room_contents_list
+  - ae_100_design
+  - 11_record_model_s
+  - ae_update_continuously_to_reflect
+  - 12_as_built_drawings
+  - ae_within_30_days_of_completion_of
+  - gc_to_ae_at_construction_milestones
+  - 14_models_for_the
+  - ae_60_calendar_days_before
+  - bim_uses_summary_table
+  - va_bim_s_tandard_29
+  - va_bim_s_tandard_30
+  - va_bim_s_tandard_31
+  - va_bim_s_tandard_32
+  - va_bim_s_tandard_33
+  - va_bim_s_tandard_34
+  - va_bim_s_tandard_35
+geometry_rules: []

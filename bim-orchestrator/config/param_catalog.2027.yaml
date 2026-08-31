@@ -1,0 +1,564 @@
+# Parameter Catalog — built-in (SYSTEM) parameter map, per built-in category.
+# Revit 2027. One file per Revit version (built-in params differ across versions).
+#
+# Sibling of ost_catalog.yaml. ost_catalog maps a label → BuiltInCategory (the
+# CATEGORY layer). THIS maps a (category, parameter) → how that parameter is
+# stored and bound (the PARAMETER layer). Together they let the Rule Builder /
+# extractor name a parameter and have the engine resolve its write target + its
+# unit, instead of free-typing a name that silently degrades to missing-data.
+#
+# WHY — the bug class this kills
+# ------------------------------
+# A rule's `parameter` is a free string today. Mistype it ("Minimum Width" vs the
+# real "Actual Run Width") and QC matches nothing → silent missing-data, never an
+# error. A (category → valid built-in params) registry turns that into an
+# authoring-time signal AND unlocks: (1) read-only refusal as a write target,
+# (2) write-target pre-resolution from `binding` (instance|type → remediation.target),
+# (3) unit inference from `dimension` (REVIT_STORAGE_UNITS becomes a VIEW of this),
+# (4) a valid-param dropdown / extractor "param-known" warning.
+# Used at AUTHORING time (Rule Builder + extractor) to make the canonical rule
+# correct at birth — NOT a runtime re-binding layer.
+#
+# SCOPE — SYSTEM families + SYSTEM parameters only (deliberate)
+# ------------------------------------------------------------
+# Only SYSTEM-family categories are catalogued, and within them only built-in
+# (system) parameters — both Revit-defined and stable across files. Doors / Windows
+# / Furniture ARE built-in CATEGORIES (OST_Doors…) but are LOADABLE component
+# families whose parameters are largely family-AUTHORED (shared / family params) →
+# they vary file-to-file and do NOT belong here; they keep the existing
+# `bound_parameter` / `custom_param` escape hatch. Built-in registry = fast path;
+# escape hatch = the long tail. Both, not either.
+#
+# PROVENANCE — tier: mcp-probe
+# ----------------------------
+# Built by introspecting live models via revit_get_element_info — reproduce/expand
+# with scripts/dump_param_catalog.py. AUTHORITATIVE for: name, storage, binding
+# (instance vs type — by which element the param appears on), writable
+# (= not isReadOnly). `dimension` is INFERRED from a sample valueString suffix
+# ('1' - 1 5/8" → length, "466 SF" → area, "525.76 CF" → volume, "20.00%" → percent,
+# "Yes"/"No" → yesno, enum text → option). The displayed UNIT (ft vs mm) is NOT
+# captured — Rule.unit + policies/revit_units own target units; the catalog asserts
+# only the DIMENSION (stable across unit systems). A later `tier: api-dump` (Revit
+# add-in reading BuiltInParameter + GetDataType/ForgeTypeId) adds the enum name +
+# authoritative spec; the KEY stays the display name, so consumers don't change.
+#
+# Source models: R27_Snowdon Towers Sample Architectural (architecture);
+#                R27_Snowdon Towers Sample Structural (structure);
+#                R27_Snowdon Towers Sample HVAC (mep/hvac — metric units);
+#                R27_Snowdon Towers Sample Plumbing (mep/plumbing).
+#
+# METRIC caveat (MEP): the HVAC model is metric, and Revit MEP shows several
+# length params UNIT-LESS ("Length" = "102" meaning 102 mm) or in mixed units
+# ("Diameter" = 8"). valueString-suffix dimension inference under-detects those, so
+# their `dimension: length` was set SEMANTICALLY (a length is a length regardless
+# of display). This is the clearest argument for the future `api-dump` tier
+# (ForgeTypeId is unit-system-independent). MEP analysis params (Flow/Velocity/
+# Pressure/Friction) are EXCLUDED — airflow/pressure dimensions aren't in the
+# taxonomy yet (length/area/volume/angle/number/…); add them when MEP rules need it.
+# This file ACCUMULATES categories across the 2027 sample models (arch + structure
+# + MEP) as they are probed.
+#
+# LOADABLE exception (structural framing / columns / foundations; doors / windows):
+# these are loadable families, but we capture their COMMON BUILT-IN params (the
+# stable ones — Mark, offsets, levels, material, fire rating, Width/Height/Sill,
+# foundation width/thickness). Family-AUTHORED params (profile dims b/h/bf/tw;
+# a door's true "clear opening width") are EXCLUDED — they vary by family → use the
+# ✏️ Khác option (custom/shared param) or bound_parameter. Marked family_kind:
+# loadable so consumers know the long tail isn't covered.
+#
+# Per-param fields:
+#   name · storage(string|integer|double|elementid|none) · binding(instance|type)
+#   writable(false ⇒ never a write target) · dimension · [sample] · [rename_only]
+#   rename_only: true ⇒ changed via rename_element, not set_parameter (K19).
+
+version: 1
+revit_version: "2027"
+provenance_tier: mcp-probe
+source_model: R27_Snowdon Towers Sample Architectural
+
+categories:
+  # ====================================================================
+  # Walls (system; has type)
+  # ====================================================================
+  - key: walls
+    ost: OST_Walls
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Fire Rating,   storage: string,    binding: type,     writable: true,  dimension: text,   sample: "2 HR" }
+      - { name: Function,      storage: integer,   binding: type,     writable: true,  dimension: option, sample: "Exterior" }
+      - { name: Width,         storage: double,    binding: type,     writable: false, dimension: length, sample: "1' - 1 5/8\"" }
+      - { name: Type Mark,     storage: string,    binding: type,     writable: true,  dimension: text,   sample: "X06" }
+      - { name: Assembly Code, storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Keynote,       storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Type Name,     storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Family Name,   storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Mark,               storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,           storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Unconnected Height, storage: double,    binding: instance, writable: false, dimension: length, sample: "24' - 8\"" }
+      - { name: Top Offset,         storage: double,    binding: instance, writable: true,  dimension: length, sample: "-0' - 1\"" }
+      - { name: Base Offset,        storage: double,    binding: instance, writable: true,  dimension: length }
+      - { name: Length,             storage: double,    binding: instance, writable: false, dimension: length, sample: "18' - 7 27/32\"" }
+      - { name: Area,               storage: double,    binding: instance, writable: false, dimension: area,   sample: "466 SF" }
+      - { name: Volume,             storage: double,    binding: instance, writable: false, dimension: volume, sample: "525.76 CF" }
+      - { name: Structural,         storage: integer,   binding: instance, writable: true,  dimension: yesno }
+      - { name: Room Bounding,      storage: integer,   binding: instance, writable: true,  dimension: yesno }
+      - { name: Base Constraint,    storage: elementid, binding: instance, writable: true,  dimension: reference }
+      - { name: Top Constraint,     storage: elementid, binding: instance, writable: true,  dimension: reference }
+
+  # ====================================================================
+  # Floors (system; has type). This model's floor types carry NO Fire Rating —
+  # absence is honest (catalog reflects what exists on the type).
+  # ====================================================================
+  - key: floors
+    ost: OST_Floors
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Function,          storage: integer,   binding: type,     writable: true,  dimension: option, sample: "Interior" }
+      - { name: Default Thickness, storage: double,    binding: type,     writable: false, dimension: length, sample: "0' - 0 1/4\"" }
+      - { name: Type Mark,         storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Assembly Code,     storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Keynote,           storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Type Name,         storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Family Name,       storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Mark,                    storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,                storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Level,                   storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "L1 - Block 35" }
+      - { name: Height Offset From Level, storage: double,   binding: instance, writable: true,  dimension: length, sample: "0' - 0\"" }
+      - { name: Thickness,               storage: double,    binding: instance, writable: false, dimension: length, sample: "0' - 0 1/4\"" }
+      - { name: Perimeter,               storage: double,    binding: instance, writable: false, dimension: length, sample: "32' - 3 1/2\"" }
+      - { name: Area,                    storage: double,    binding: instance, writable: false, dimension: area,   sample: "48 SF" }
+      - { name: Volume,                  storage: double,    binding: instance, writable: false, dimension: volume, sample: "1.01 CF" }
+      - { name: Structural,              storage: integer,   binding: instance, writable: true,  dimension: yesno }
+      - { name: Room Bounding,           storage: integer,   binding: instance, writable: true,  dimension: yesno }
+
+  # ====================================================================
+  # Ceilings (system; has type)
+  # ====================================================================
+  - key: ceilings
+    ost: OST_Ceilings
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Thickness,     storage: double,    binding: type,     writable: false, dimension: length, sample: "0' - 4 1/4\"" }
+      - { name: Type Mark,     storage: string,    binding: type,     writable: true,  dimension: text,   sample: "C02" }
+      - { name: Assembly Code, storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Keynote,       storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Type Name,     storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Family Name,   storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Mark,                    storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,                storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Height Offset From Level, storage: double,   binding: instance, writable: true,  dimension: length, sample: "8' - 0\"" }
+      - { name: Level,                   storage: elementid, binding: instance, writable: false, dimension: reference, sample: "L1 - Block 37" }
+      - { name: Perimeter,               storage: double,    binding: instance, writable: false, dimension: length, sample: "20' - 7\"" }
+      - { name: Area,                    storage: double,    binding: instance, writable: false, dimension: area,   sample: "14 SF" }
+      - { name: Volume,                  storage: double,    binding: instance, writable: false, dimension: volume, sample: "4.88 CF" }
+      - { name: Room Bounding,           storage: integer,   binding: instance, writable: true,  dimension: yesno }
+
+  # ====================================================================
+  # Roofs (system; has type)
+  # ====================================================================
+  - key: roofs
+    ost: OST_Roofs
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Default Thickness, storage: double,    binding: type,     writable: false, dimension: length, sample: "0' - 6\"" }
+      - { name: Type Mark,         storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Assembly Code,     storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Keynote,           storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Type Name,         storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Family Name,       storage: string,    binding: type,     writable: false, dimension: text,   rename_only: true }
+      - { name: Mark,                  storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,              storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Thickness,             storage: double,    binding: instance, writable: false, dimension: length, sample: "0' - 6\"" }
+      - { name: Maximum Ridge Height,  storage: double,    binding: instance, writable: false, dimension: length, sample: "58' - 10\"" }
+      - { name: Fascia Depth,          storage: double,    binding: instance, writable: false, dimension: length, sample: "0' - 0\"" }
+      - { name: Rafter Cut,            storage: integer,   binding: instance, writable: true,  dimension: option, sample: "Plumb Cut" }
+      - { name: Rafter or Truss,       storage: integer,   binding: instance, writable: true,  dimension: option, sample: "Truss" }
+      - { name: Base Level,            storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "R2" }
+      - { name: Base Offset From Level, storage: double,   binding: instance, writable: true,  dimension: length, sample: "-0' - 6\"" }
+      - { name: Area,                  storage: double,    binding: instance, writable: false, dimension: area,   sample: "6736 SF" }
+      - { name: Volume,                storage: double,    binding: instance, writable: false, dimension: volume, sample: "3367.94 CF" }
+      - { name: Room Bounding,         storage: integer,   binding: instance, writable: true,  dimension: yesno }
+
+  # ====================================================================
+  # Rooms (system; NO type element — typeId == -1, so every param is instance)
+  # ====================================================================
+  - key: rooms
+    ost: OST_Rooms
+    family_kind: system
+    has_type: false
+    params:
+      - { name: Name,           storage: string,    binding: instance, writable: true,  dimension: text,   sample: "Stair" }
+      - { name: Number,         storage: string,    binding: instance, writable: true,  dimension: text,   sample: "S1" }
+      - { name: Comments,       storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Occupancy,      storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Department,     storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Base Finish,    storage: string,    binding: instance, writable: true,  dimension: text,   sample: "Vinyl Base" }
+      - { name: Ceiling Finish, storage: string,    binding: instance, writable: true,  dimension: text,   sample: "Open" }
+      - { name: Wall Finish,    storage: string,    binding: instance, writable: true,  dimension: text,   sample: "Concrete" }
+      - { name: Floor Finish,   storage: string,    binding: instance, writable: true,  dimension: text,   sample: "Concrete" }
+      - { name: Ceiling Height, storage: double,    binding: instance, writable: true,  dimension: length }
+      - { name: Base Offset,    storage: double,    binding: instance, writable: true,  dimension: length, sample: "-10' - 11\"" }
+      - { name: Limit Offset,   storage: double,    binding: instance, writable: true,  dimension: length, sample: "0' - 0\"" }
+      - { name: Upper Limit,    storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Parapet 2" }
+      - { name: Unbounded Height, storage: double,  binding: instance, writable: false, dimension: length, sample: "87' - 8\"" }
+      - { name: Area,           storage: double,    binding: instance, writable: false, dimension: area,   sample: "185 SF" }
+      - { name: Perimeter,      storage: double,    binding: instance, writable: false, dimension: length, sample: "60' - 10\"" }
+      - { name: Volume,         storage: double,    binding: instance, writable: false, dimension: volume, sample: "15891.47 CF" }
+
+  # ====================================================================
+  # Stairs (system; has type). Type carries the design constraints:
+  # Minimum Run Width / Minimum Tread Depth / Maximum Riser Height (all writable).
+  # ====================================================================
+  - key: stairs
+    ost: OST_Stairs
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Minimum Run Width,   storage: double,    binding: type, writable: true,  dimension: length, sample: "3' - 8\"" }
+      - { name: Minimum Tread Depth, storage: double,    binding: type, writable: true,  dimension: length, sample: "0' - 11\"" }
+      - { name: Maximum Riser Height, storage: double,   binding: type, writable: true,  dimension: length, sample: "0' - 7\"" }
+      - { name: Function,            storage: integer,   binding: type, writable: true,  dimension: option, sample: "Interior" }
+      - { name: Left Support,        storage: integer,   binding: type, writable: true,  dimension: option, sample: "Stringer (Closed)" }
+      - { name: Right Support,       storage: integer,   binding: type, writable: true,  dimension: option, sample: "Stringer (Closed)" }
+      - { name: Type Mark,           storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Keynote,             storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Type Name,           storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,         storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Desired Number of Risers, storage: integer, binding: instance, writable: true,  dimension: number, sample: "19" }
+      - { name: Desired Stair Height,storage: double,    binding: instance, writable: false, dimension: length, sample: "11' - 0\"" }
+      - { name: Actual Tread Depth,  storage: double,    binding: instance, writable: false, dimension: length, sample: "0' - 11\"" }
+      - { name: Actual Riser Height, storage: double,    binding: instance, writable: false, dimension: length, sample: "0' - 6 15/16\"" }
+      - { name: Actual Number of Risers, storage: integer, binding: instance, writable: false, dimension: number, sample: "19" }
+      - { name: Top Offset,          storage: double,    binding: instance, writable: true,  dimension: length, sample: "0' - 0\"" }
+      - { name: Base Offset,         storage: double,    binding: instance, writable: true,  dimension: length, sample: "0' - 0\"" }
+      - { name: Mark,                storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,            storage: string,    binding: instance, writable: true,  dimension: text }
+
+  # ====================================================================
+  # Stair Runs (system; has type). Actual Run Width is INSTANCE + WRITABLE —
+  # the real parameter behind a clear-stair-width / egress check.
+  # ====================================================================
+  - key: stairs-runs
+    ost: OST_StairsRuns
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Actual Run Width,        storage: double,  binding: instance, writable: true,  dimension: length, sample: "3' - 8\"" }
+      - { name: Actual Tread Depth,      storage: double,  binding: instance, writable: false, dimension: length, sample: "0' - 11\"" }
+      - { name: Actual Riser Height,     storage: double,  binding: instance, writable: false, dimension: length, sample: "0' - 6 15/16\"" }
+      - { name: Actual Number of Treads, storage: integer, binding: instance, writable: false, dimension: number, sample: "9" }
+      - { name: Actual Number of Risers, storage: integer, binding: instance, writable: false, dimension: number, sample: "10" }
+      - { name: Run Height,              storage: double,  binding: instance, writable: false, dimension: length, sample: "5' - 9 15/32\"" }
+      - { name: Relative Base Height,    storage: double,  binding: instance, writable: true,  dimension: length }
+      - { name: Location Line,           storage: integer, binding: instance, writable: true,  dimension: option, sample: "Run: Center" }
+      - { name: Mark,                    storage: string,  binding: instance, writable: true,  dimension: text }
+      - { name: Comments,                storage: string,  binding: instance, writable: true,  dimension: text }
+      - { name: Riser Thickness, storage: double,    binding: type, writable: true,  dimension: length, sample: "0' - 0 1/4\"" }
+      - { name: Tread Thickness, storage: double,    binding: type, writable: true,  dimension: length, sample: "0' - 0 1/4\"" }
+      - { name: Nosing Length,   storage: double,    binding: type, writable: true,  dimension: length, sample: "0' - 1\"" }
+      - { name: Tread Material,  storage: elementid, binding: type, writable: true,  dimension: reference, sample: "Steel, Paint Finish, Dark Gray" }
+      - { name: Riser Material,  storage: elementid, binding: type, writable: true,  dimension: reference }
+      - { name: Type Mark,       storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Type Name,       storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,     storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+
+  # ====================================================================
+  # Stair Landings (system; has type)
+  # ====================================================================
+  - key: stairs-landings
+    ost: OST_StairsLandings
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Same as Run,     storage: integer,   binding: type, writable: true,  dimension: yesno }
+      - { name: Type Mark,       storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Assembly Code,   storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Keynote,         storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Type Name,       storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,     storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Total Thickness, storage: double,    binding: instance, writable: false, dimension: length, sample: "0' - 0 1/4\"" }
+      - { name: Relative Height, storage: double,    binding: instance, writable: true,  dimension: length, sample: "5' - 9 15/32\"" }
+      - { name: Mark,            storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,        storage: string,    binding: instance, writable: true,  dimension: text }
+
+  # ====================================================================
+  # Ramps (system; has type). Width (instance) + Ramp Max Slope (type) are the
+  # accessibility-check parameters.
+  # ====================================================================
+  - key: ramps
+    ost: OST_Ramps
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Ramp Max Slope (1/x),  storage: double,    binding: type, writable: true,  dimension: number, sample: "12" }
+      - { name: Maximum Incline Length, storage: double,   binding: type, writable: true,  dimension: length, sample: "30' - 0\"" }
+      - { name: Thickness,             storage: double,    binding: type, writable: false, dimension: length, sample: "0' - 3\"" }
+      - { name: Ramp Material,         storage: elementid, binding: type, writable: true,  dimension: reference, sample: "Oak Flooring" }
+      - { name: Function,              storage: integer,   binding: type, writable: true,  dimension: option, sample: "Interior" }
+      - { name: Type Mark,             storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Type Name,             storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,           storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Width,        storage: double,    binding: instance, writable: true,  dimension: length, sample: "3' - 0\"" }
+      - { name: Top Offset,   storage: double,    binding: instance, writable: true,  dimension: length, sample: "1' - 0\"" }
+      - { name: Base Offset,  storage: double,    binding: instance, writable: true,  dimension: length, sample: "0' - 0\"" }
+      - { name: Top Level,    storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "L1 - Block 37" }
+      - { name: Base Level,   storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "L1 - Block 37" }
+      - { name: Mark,         storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,     storage: string,    binding: instance, writable: true,  dimension: text }
+
+  # ====================================================================
+  # Structural Framing / Beams (LOADABLE — common built-in params only;
+  # profile dims b/h excluded). Fire Rating rides the type.
+  # ====================================================================
+  - key: structural-framing
+    ost: OST_StructuralFraming
+    family_kind: loadable
+    has_type: true
+    params:
+      - { name: Fire Rating,         storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Structural Material, storage: elementid, binding: type, writable: true,  dimension: reference, sample: "Concrete, Cast-in-Place gray" }
+      - { name: Type Mark,           storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Assembly Code,       storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Keynote,             storage: string,    binding: type, writable: true,  dimension: text }
+      - { name: Type Name,           storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,         storage: string,    binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Mark,                    storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,                storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Structural Usage,        storage: integer,   binding: instance, writable: true,  dimension: option, sample: "Girder" }
+      - { name: Cross-Section Rotation,  storage: double,    binding: instance, writable: true,  dimension: angle,  sample: "0.00°" }
+      - { name: Start Level Offset,      storage: double,    binding: instance, writable: true,  dimension: length, sample: "0\"" }
+      - { name: End Level Offset,        storage: double,    binding: instance, writable: true,  dimension: length, sample: "0\"" }
+      - { name: Reference Level,         storage: elementid, binding: instance, writable: false, dimension: reference, sample: "L1_35_Low" }
+      - { name: Reference Level Elevation, storage: double,  binding: instance, writable: false, dimension: length, sample: "-5'-11\"" }
+      - { name: Cut Length,              storage: double,    binding: instance, writable: false, dimension: length, sample: "7'-10\"" }
+      - { name: Volume,                  storage: double,    binding: instance, writable: false, dimension: volume, sample: "18.28 CF" }
+
+  # ====================================================================
+  # Structural Columns (LOADABLE — common built-in params only; profile excluded)
+  # ====================================================================
+  - key: structural-columns
+    ost: OST_StructuralColumns
+    family_kind: loadable
+    has_type: true
+    params:
+      - { name: Type Mark,     storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Assembly Code, storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Keynote,       storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Type Name,     storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,   storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Mark,                  storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,              storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Structural Material,   storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Concrete, Cast-in-Place gray" }
+      - { name: Column Style,          storage: integer,   binding: instance, writable: true,  dimension: option, sample: "Vertical" }
+      - { name: Column Location Mark,  storage: string,    binding: instance, writable: false, dimension: text,   sample: "D-3" }
+      - { name: Top Offset,            storage: double,    binding: instance, writable: true,  dimension: length, sample: "0\"" }
+      - { name: Base Offset,           storage: double,    binding: instance, writable: true,  dimension: length, sample: "0\"" }
+      - { name: Top Level,             storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "L1_35_Low" }
+      - { name: Base Level,            storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Top of Footing" }
+      - { name: Moves With Grids,      storage: integer,   binding: instance, writable: true,  dimension: yesno }
+      - { name: Room Bounding,         storage: integer,   binding: instance, writable: true,  dimension: yesno }
+      - { name: Volume,                storage: double,    binding: instance, writable: false, dimension: volume, sample: "46.33 CF" }
+
+  # ====================================================================
+  # Structural Foundations (LOADABLE). Footing Width / Foundation Thickness are
+  # TYPE-level + writable (the design intent); the instance Width mirrors them
+  # read-only, so only the type Width is catalogued (one entry per name).
+  # ====================================================================
+  - key: structural-foundation
+    ost: OST_StructuralFoundation
+    family_kind: loadable
+    has_type: true
+    params:
+      - { name: Width,                       storage: double,    binding: type, writable: true,  dimension: length, sample: "3'-0\"" }
+      - { name: Foundation Thickness,        storage: double,    binding: type, writable: true,  dimension: length, sample: "1'-6\"" }
+      - { name: Default End Extension Length, storage: double,   binding: type, writable: true,  dimension: length, sample: "1'-0\"" }
+      - { name: Structural Material,         storage: elementid, binding: type, writable: true,  dimension: reference, sample: "Concrete, Cast-in-Place gray" }
+      - { name: Structural Usage,            storage: integer,   binding: type, writable: true,  dimension: option, sample: "Bearing" }
+      - { name: Do Not Break At Inserts,     storage: integer,   binding: type, writable: true,  dimension: yesno }
+      - { name: Type Mark,     storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Assembly Code, storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Keynote,       storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Type Name,     storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,   storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Mark,                storage: string, binding: instance, writable: true,  dimension: text }
+      - { name: Comments,            storage: string, binding: instance, writable: true,  dimension: text }
+      - { name: Length,              storage: double, binding: instance, writable: false, dimension: length, sample: "61'-3\"" }
+      - { name: Eccentricity,        storage: double, binding: instance, writable: true,  dimension: length, sample: "0\"" }
+      - { name: Area,                storage: double, binding: instance, writable: false, dimension: area,   sample: "188 SF" }
+      - { name: Volume,              storage: double, binding: instance, writable: false, dimension: volume, sample: "282.38 CF" }
+      - { name: Elevation at Top,    storage: double, binding: instance, writable: false, dimension: length, sample: "-17'-6\"" }
+      - { name: Elevation at Bottom, storage: double, binding: instance, writable: false, dimension: length, sample: "-19'-0\"" }
+
+  # ====================================================================
+  # Ducts (MEP system family; metric model — see METRIC caveat in header).
+  # Analysis params (Flow/Velocity/Pressure/Friction) excluded.
+  # ====================================================================
+  - key: ducts
+    ost: OST_DuctCurves
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Type Mark,     storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Assembly Code, storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Keynote,       storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Type Name,     storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,   storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Diameter,              storage: double,    binding: instance, writable: true,  dimension: length, sample: "8\"" }
+      - { name: Size,                  storage: string,    binding: instance, writable: false, dimension: text,   sample: "8\"ø" }
+      - { name: Length,                storage: double,    binding: instance, writable: false, dimension: length, sample: "102 (mm)" }
+      - { name: Area,                  storage: double,    binding: instance, writable: false, dimension: area,   sample: "0.06 m²" }
+      - { name: Insulation Thickness,  storage: double,    binding: instance, writable: false, dimension: length, sample: "0" }
+      - { name: Lining Thickness,      storage: double,    binding: instance, writable: false, dimension: length, sample: "0" }
+      - { name: System Type,           storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Supply Air" }
+      - { name: System Classification, storage: string,    binding: instance, writable: false, dimension: text,   sample: "Supply Air" }
+      - { name: System Name,           storage: string,    binding: instance, writable: false, dimension: text,   sample: "Mechanical Supply Air 1" }
+      - { name: Middle Elevation,      storage: double,    binding: instance, writable: true,  dimension: length, sample: "2770 (mm)" }
+      - { name: Reference Level,       storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "L2" }
+      - { name: Mark,                  storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,              storage: string,    binding: instance, writable: true,  dimension: text }
+
+  # ====================================================================
+  # Flex Ducts (MEP system family)
+  # ====================================================================
+  - key: flex-ducts
+    ost: OST_FlexDuctCurves
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Type Mark,     storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Assembly Code, storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Keynote,       storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Type Name,     storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,   storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Diameter,              storage: double,    binding: instance, writable: true,  dimension: length, sample: "6\"" }
+      - { name: Length,                storage: double,    binding: instance, writable: false, dimension: length, sample: "473 (mm)" }
+      - { name: Insulation Thickness,  storage: double,    binding: instance, writable: false, dimension: length, sample: "0" }
+      - { name: Flex Pattern,          storage: integer,   binding: instance, writable: true,  dimension: option, sample: "Single Line" }
+      - { name: System Type,           storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Supply Air" }
+      - { name: System Classification, storage: string,    binding: instance, writable: false, dimension: text,   sample: "Supply Air" }
+      - { name: System Name,           storage: string,    binding: instance, writable: false, dimension: text,   sample: "Mechanical Supply Air 1" }
+      - { name: Reference Level,       storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "L2" }
+      - { name: Mark,                  storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,              storage: string,    binding: instance, writable: true,  dimension: text }
+
+  # ====================================================================
+  # Pipes (MEP plumbing system family). Plumbing-relevant built-ins: Fixture Units,
+  # Slope (drainage), Invert Elevation, Pipe Segment / Schedule. Analysis params
+  # (Friction/Roughness/Section) excluded; Slope is a ratio → dimension: number.
+  # ====================================================================
+  - key: pipes
+    ost: OST_PipeCurves
+    family_kind: system
+    has_type: true
+    params:
+      - { name: Type Mark,     storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Assembly Code, storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Keynote,       storage: string, binding: type, writable: true,  dimension: text }
+      - { name: Type Name,     storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,   storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Diameter,              storage: double,    binding: instance, writable: true,  dimension: length, sample: "4\"" }
+      - { name: Size,                  storage: string,    binding: instance, writable: false, dimension: text,   sample: "4\"ø" }
+      - { name: Wall Thickness,        storage: double,    binding: instance, writable: false, dimension: length, sample: "1/4\"" }
+      - { name: Length,                storage: double,    binding: instance, writable: false, dimension: length, sample: "1' - 5 31/32\"" }
+      - { name: Area,                  storage: double,    binding: instance, writable: false, dimension: area,   sample: "2 SF" }
+      - { name: Slope,                 storage: double,    binding: instance, writable: false, dimension: number }
+      - { name: Fixture Units,         storage: double,    binding: instance, writable: false, dimension: number, sample: "4" }
+      - { name: Invert Elevation,      storage: double,    binding: instance, writable: false, dimension: length, sample: "-5' - 2 25/32\"" }
+      - { name: System Type,           storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Sanitary" }
+      - { name: System Classification, storage: string,    binding: instance, writable: false, dimension: text,   sample: "Sanitary" }
+      - { name: System Name,           storage: string,    binding: instance, writable: false, dimension: text,   sample: "Building Sanitary" }
+      - { name: Pipe Segment,          storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Polyvinyl Chloride - Rigid - Schedule 40" }
+      - { name: Material,              storage: elementid, binding: instance, writable: false, dimension: reference, sample: "Polyvinyl Chloride - Rigid" }
+      - { name: Schedule/Type,         storage: elementid, binding: instance, writable: false, dimension: reference, sample: "Schedule 40" }
+      - { name: Reference Level,       storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "L1 - Block 37" }
+      - { name: Mark,                  storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,              storage: string,    binding: instance, writable: true,  dimension: text }
+
+  # ====================================================================
+  # Doors (LOADABLE — only the COMMON built-in size/identity params; a family's
+  # custom params vary file-to-file → use the ✏️ Khác option for those). The true
+  # "clear opening width" is usually a CUSTOM param; `Width` (leaf width) is the
+  # closest built-in (see QA F1b / Solibri SOL/208). Use intent aliases to steer.
+  # ====================================================================
+  - key: doors
+    ost: OST_Doors
+    family_kind: loadable
+    has_type: true
+    params:
+      - { name: Width,         storage: double,  binding: type, writable: true,  dimension: length, sample: "3' - 0\"" }
+      - { name: Height,        storage: double,  binding: type, writable: true,  dimension: length, sample: "7' - 0\"" }
+      - { name: Thickness,     storage: double,  binding: type, writable: true,  dimension: length, sample: "0' - 1 3/4\"" }
+      - { name: Fire Rating,   storage: string,  binding: type, writable: true,  dimension: text,   sample: "180 MIN" }
+      - { name: Function,      storage: integer, binding: type, writable: true,  dimension: option, sample: "Exterior" }
+      - { name: Type Mark,     storage: string,  binding: type, writable: true,  dimension: text,   sample: "77" }
+      - { name: Type Name,     storage: string,  binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,   storage: string,  binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Mark,          storage: string,    binding: instance, writable: true,  dimension: text,   sample: "S10" }
+      - { name: Comments,      storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Level,         storage: elementid, binding: instance, writable: true,  dimension: reference, sample: "Parking" }
+      - { name: Head Height,   storage: double,    binding: instance, writable: true,  dimension: length, sample: "7' - 0\"" }
+      - { name: Sill Height,   storage: double,    binding: instance, writable: true,  dimension: length, sample: "0' - 0\"" }
+      - { name: Rough Width,   storage: double,    binding: instance, writable: false, dimension: length, sample: "3' - 4\"" }
+      - { name: Rough Height,  storage: double,    binding: instance, writable: false, dimension: length, sample: "7' - 4\"" }
+      - { name: Area,          storage: double,    binding: instance, writable: false, dimension: area,   sample: "60 SF" }
+
+  # ====================================================================
+  # Windows (LOADABLE — common built-in size/identity params only).
+  # ====================================================================
+  - key: windows
+    ost: OST_Windows
+    family_kind: loadable
+    has_type: true
+    params:
+      - { name: Width,              storage: double, binding: type, writable: true,  dimension: length, sample: "4' - 2\"" }
+      - { name: Height,             storage: double, binding: type, writable: true,  dimension: length, sample: "5' - 0\"" }
+      - { name: Rough Width,        storage: double, binding: type, writable: true,  dimension: length, sample: "4' - 2 1/2\"" }
+      - { name: Rough Height,       storage: double, binding: type, writable: true,  dimension: length, sample: "5' - 0 1/2\"" }
+      - { name: Default Sill Height, storage: double, binding: type, writable: true, dimension: length, sample: "3' - 0\"" }
+      - { name: Fire Rating,        storage: string, binding: type, writable: true,  dimension: text,   sample: "0.5h" }
+      - { name: Type Mark,          storage: string, binding: type, writable: true,  dimension: text,   sample: "59" }
+      - { name: Type Name,          storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Family Name,        storage: string, binding: type, writable: false, dimension: text, rename_only: true }
+      - { name: Mark,        storage: string,    binding: instance, writable: true, dimension: text }
+      - { name: Comments,    storage: string,    binding: instance, writable: true, dimension: text }
+      - { name: Level,       storage: elementid, binding: instance, writable: true, dimension: reference }
+      - { name: Sill Height, storage: double,    binding: instance, writable: true, dimension: length }
+      - { name: Head Height, storage: double,    binding: instance, writable: true, dimension: length }
+
+  # ====================================================================
+  # Furniture (loadable; has type) — added 2026-08-25
+  # Probed live on R27_school_design_architectural via
+  # scripts/dump_param_catalog.py --category OST_Furniture --samples 6.
+  # CURATED like doors/windows: the probe also returns family-AUTHORED params
+  # (Chairs, Tubing Material, Seat/Back Material, Radius, Diameter, Height,
+  # Top/Base Material) which exist only in the families that happened to be
+  # sampled — those vary file-to-file and stay on the bound_parameter escape
+  # hatch, per this file's SCOPE note. Only the stable built-ins are kept.
+  # Family Name / Type Name are recorded on the TYPE (as for doors/windows);
+  # the probe reports them instance-side because Revit mirrors them down.
+  # ====================================================================
+  - key: furniture
+    ost: OST_Furniture
+    family_kind: loadable
+    has_type: true
+    params:
+      - { name: Family Name,           storage: string,    binding: type,     writable: false, dimension: text, rename_only: true }
+      - { name: Type Name,             storage: string,    binding: type,     writable: false, dimension: text, rename_only: true }
+      - { name: Type Mark,             storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Keynote,               storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Assembly Code,         storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Type Comments,         storage: string,    binding: type,     writable: true,  dimension: text }
+      - { name: Code Name,             storage: string,    binding: type,     writable: false, dimension: text }
+      - { name: Classification Number, storage: string,    binding: type,     writable: false, dimension: text }
+      - { name: Classification Title,  storage: string,    binding: type,     writable: false, dimension: text }
+      - { name: Mark,                  storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Comments,              storage: string,    binding: instance, writable: true,  dimension: text }
+      - { name: Level,                 storage: elementid, binding: instance, writable: false, dimension: reference }
+      - { name: Host,                  storage: elementid, binding: instance, writable: false, dimension: reference }
+      - { name: Elevation from Level,  storage: double,    binding: instance, writable: false, dimension: length }
+      - { name: Area,                  storage: double,    binding: instance, writable: false, dimension: area }
+      - { name: Volume,                storage: double,    binding: instance, writable: false, dimension: volume }

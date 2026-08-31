@@ -1,0 +1,58 @@
+# Fire-Rating Compliance rules (Phase 2 Day 4 — hard-citation demo)
+#
+# Demonstrates per-rule citation policy:
+#   * mode: hard           → every finding MUST cite BEP §x or IBC §y
+#   * source_filter        → restrict RAG search to specific corpora
+#   * on_missing: warn     → flag findings as citation_missing instead of dropping
+#
+# This file targets Walls (changed from Rooms). The same Query / QC / Design
+# stack handles it because the rule abstraction is data-driven.
+
+scenario: fire_rating_compliance
+target_category: Walls
+
+rules:
+  # IBC §711 — corridor walls require 2-hour fire rating
+  - id: wall.fire_rating.required
+    parameter: FireRating
+    requirement: present_and_nonempty
+    severity_tag: fire_safety_change
+    description: |
+      Corridor walls must declare a fire rating. IBC §711.2.1 requires
+      2-hour rated assemblies for occupied corridor enclosures.
+    citation:
+      mode: hard
+      source_filter: [BEP.pdf, IBC.pdf]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null
+
+  # BEP firm standard — fire-rated walls must reference IBC chapter
+  - id: wall.fire_rating.format
+    parameter: FireRating
+    requirement: matches_regex
+    pattern: "^[1-4]-hour$"
+    severity_tag: missing_required_param
+    description: |
+      FireRating value must follow firm standard "N-hour" (e.g. "2-hour").
+      Numeric-only values or other formats break the BIM360 schedule export.
+    citation:
+      mode: hard
+      source_filter: [BEP.pdf]
+      on_missing: downgrade
+    autofill:
+      strategy: none
+      fallback: null
+
+  # BEP §6.3 — assembly type must be present (soft mode — internal QA only)
+  - id: wall.assembly_type.present
+    parameter: AssemblyType
+    requirement: present_and_nonempty
+    severity_tag: missing_optional_param
+    description: Assembly Type helps downstream BOQ rollup
+    citation:
+      mode: soft   # Helpful citation but not required (firm-internal rule)
+    autofill:
+      strategy: none
+      fallback: null

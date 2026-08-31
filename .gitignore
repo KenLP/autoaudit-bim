@@ -1,0 +1,94 @@
+# Top-level .gitignore for the autoaudit-bim repo.
+# The nested bim-orchestrator/.gitignore covers code-specific patterns.
+# Patterns here cover machine-local / cross-cutting items.
+
+# -- Local design / planning notes (not part of the shipped repo) ----
+design-notes/
+notes/
+
+# -- OS junk ---------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -- Editor / IDE state (per-developer) ------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# -- Claude Code per-project state -----------------------------------
+# settings.local.json holds machine-local permission allowlists; do not commit
+.claude/
+.agents/
+
+# -- Secrets and per-machine config ----------------------------------
+# .env files contain ANTHROPIC_API_KEY + ACC credentials -- NEVER commit
+.env
+.env.local
+.env.*.local
+
+# -- Python virtual environments (always regenerated via uv) ---------
+.venv/
+venv/
+env/
+
+# -- Runtime artifacts (machine-specific outputs) --------------------
+checkpoints/
+audit-logs/
+recordings/
+*.sqlite
+*.sqlite-journal
+
+# -- RAG / vector store (regenerated per-machine) --------------------
+chroma_db/
+data/chroma/
+.chroma/
+
+# -- Findings JSON dumped by --check / --apply CLI -------------------
+# Anchored with a leading slash: a bare name matches at EVERY depth, which
+# also swallowed docs/sample-output/findings.json -- a committed sample.
+/findings.json
+/tmp/*_findings.json
+
+# -- Per-run artifact folders + side reports (local-only) ------------
+# Run artifacts describe real projects and never belong in git.
+runs/
+_runs_archive*/
+/review_queue.md
+/data_quality_report.md
+
+# -- Python caches ---------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# -- Build artifacts -------------------------------------------------
+build/
+dist/
+*.egg-info/
+.Python
+
+# -- Operator-uploaded rules YAML from the AA workflow (per-machine) -
+# Streamlit's Setup -> "Upload custom rules JSON" writes
+# config/rules.<scenario>.uploaded.yaml as a runtime artifact.
+# Committable ruleset files live under config/ without ".uploaded.".
+**/config/rules.*.uploaded.yaml
+
+# -- Client CAD drawings -- NEVER commit (confidentiality) -----------
+# Real client drawings must never enter the repo. Blanket-ignore CAD
+# source everywhere; a genuine, non-confidential test fixture can be
+# force-added with `git add -f`.
+*.dxf
+*.dwg
+
+# -- AutoAudit UI -- Node build artifacts, not source ----------------
+# scripts/build-ui.ps1 regenerates dist/ from autoaudit-ui/src on demand;
+# service/spa.py serves it at /ui. Neither belongs in git.
+autoaudit-ui/dist/
+autoaudit-ui/node_modules/

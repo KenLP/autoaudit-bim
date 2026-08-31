@@ -1,0 +1,36 @@
+{
+  "scenario": "ibc_1003_2_egress_ceiling_height_corrected",
+  "target_category": "Rooms",
+  "metadata": {
+    "source": "IBC §1003.2",
+    "custom_param": "Is Means of Egress (Yes/No on Rooms — add via Manage > Project Parameters; edit when_param if your project uses different name)",
+    "follow_ups": ["§1208.2", "§1003.3", "§1011.3", "§1010.1.1", "§1012.5.2", "§406.2.2", "§505.2"]
+  },
+  "rules": [
+    {
+      "id": "ibc.1003.2.egress_ceiling_height",
+      "rule_type": "value_constraint",
+      "category": "Rooms",
+      "parameter": "Unbounded Height",
+      "requirement": "numeric_min_conditional",
+      "threshold": 2.286,
+      "unit": "m",
+      "when_param": "Is Means of Egress",
+      "when_pattern": "^(Yes|true|1)$",
+      "severity_tag": "geometric_violation",
+      "description": "Means of egress rooms must have ceiling height >= 2286 mm (IBC §1003.2). Stairs/ramps/doors handled by referenced exception sections.",
+      "fixability": "manual",
+      "autofill": {"strategy": "none"},
+      "extraction_meta": {
+        "confidence": 0.88,
+        "source_text": "The means of egress shall have a ceiling height of not less than 7 feet 6 inches (2286 mm) above the finished floor.",
+        "source_location": "IBC §1003.2",
+        "execution_status": "executable",
+        "notes": [
+          "Headroom measured from finished floor to underside of obstruction (transom for doorway, beam/duct/pipe in general).",
+          "Term 'means of egress' includes exit access, exit, and exit discharge components."
+        ]
+      }
+    }
+  ]
+}

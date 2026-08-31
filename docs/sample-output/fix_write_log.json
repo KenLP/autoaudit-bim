@@ -1,0 +1,1 @@
+[{"iteration": 0, "rule_id": "demo.doors.mark_naming", "write_eid": 705, "parameter": "Mark", "old": "D 105", "new": "D_105"}, {"iteration": 0, "rule_id": "demo.rooms.department_required", "write_eid": 401, "parameter": "Department", "old": null, "new": "General"}]

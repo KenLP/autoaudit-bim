@@ -1,0 +1,30 @@
+# Khối B live — nightly propose-only audit against the OPEN Snowdon model.
+# SPEC_LIVE_COMBINED §Khối B / SPEC_SCHEDULED_AUDIT_DELTA §nghiệm thu 1-5.
+# Created 2026-07-31 for the first live scheduled-audit acceptance.
+#
+#   * mode run_revit + dry_run FALSE — ACC issues MUST really be created
+#     (Path A groups + approve-gated Path B proposals); that is the propose
+#     act under test, and what cross-run dedup needs on night 2.
+#   * propose_only TRUE — the Mức-1 guarantee: every would-be-`auto` Path B
+#     decision is demoted to `approve`, so the nightly NEVER writes to the
+#     model on its own. Apply stays exclusively with the ApprovalWatcher.
+#   * unattended DISABLED — Snowdon is a cloud model ("Cloud Models://…"),
+#     which `launch()`'s Popen([exe, path]) cannot open; the nightly relies
+#     on Revit being left open with the model. (Local-model nightlies can
+#     flip unattended on — that path was live-verified 2026-07-30.)
+name: nightly_snowdon
+rules:
+  - rules.demo.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: false
+  propose_only: true
+unattended:
+  enabled: false

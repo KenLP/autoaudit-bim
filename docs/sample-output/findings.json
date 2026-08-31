@@ -1,0 +1,67 @@
+[
+  {
+    "rule_id": "demo.doors.fire_rating",
+    "element_id": "703",
+    "parameter": "Fire Rating",
+    "severity_tag": "fire_safety_change",
+    "severity": "severity_high",
+    "message": "demo.doors.fire_rating: 36x84 (120 MIN) \u2014 Door Fire Rating must be present (inherit from the host Wall if blank) and formatted as \"X HR\".. Got '120 min' for parameter 'Fire Rating'.",
+    "current_value": "120 min",
+    "suggested_value": "2 HR",
+    "citation": null,
+    "status": "non_compliant",
+    "element_name": "Door-Single-Flush - 36x84 (120 MIN)"
+  },
+  {
+    "rule_id": "demo.doors.fire_rating",
+    "element_id": "704",
+    "parameter": "Fire Rating",
+    "severity_tag": "fire_safety_change",
+    "severity": "severity_high",
+    "message": "demo.doors.fire_rating: 36x84 (120 MIN) \u2014 Door Fire Rating must be present (inherit from the host Wall if blank) and formatted as \"X HR\".. Got '120 min' for parameter 'Fire Rating'.",
+    "current_value": "120 min",
+    "suggested_value": "2 HR",
+    "citation": null,
+    "status": "non_compliant",
+    "element_name": "Door-Single-Flush - 36x84 (120 MIN)"
+  },
+  {
+    "rule_id": "demo.doors.width_min",
+    "element_id": "707",
+    "parameter": "Width",
+    "severity_tag": "geometric_violation",
+    "severity": "severity_high",
+    "message": "demo.doors.width_min: 36x84 Narrow \u2014 Door nominal leaf width must be at least 900 mm (firm standard).. Got '609.6 mm' for parameter 'Width'.",
+    "current_value": "609.6 mm",
+    "suggested_value": null,
+    "citation": null,
+    "status": "non_compliant",
+    "element_name": "Door-Single-Flush - 36x84 Narrow"
+  },
+  {
+    "rule_id": "demo.rooms.number_unique",
+    "element_id": "402",
+    "parameter": "Number",
+    "severity_tag": "duplicate_identifier",
+    "severity": "severity_medium",
+    "message": "demo.rooms.number_unique: Living Room \u2014 Room numbers must be unique across the project.. Got '101' for parameter 'Number'.",
+    "current_value": "101",
+    "suggested_value": null,
+    "citation": null,
+    "status": "non_compliant",
+    "element_name": "Living Room"
+  },
+  {
+    "rule_id": "demo.rooms.number_unique",
+    "element_id": "403",
+    "parameter": "Number",
+    "severity_tag": "duplicate_identifier",
+    "severity": "severity_medium",
+    "message": "demo.rooms.number_unique: Dining Room \u2014 Room numbers must be unique across the project.. Got '101' for parameter 'Number'.",
+    "current_value": "101",
+    "suggested_value": null,
+    "citation": null,
+    "status": "non_compliant",
+    "element_name": "Dining Room"
+  }
+]

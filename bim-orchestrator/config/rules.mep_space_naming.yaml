@@ -1,0 +1,40 @@
+# D4 (AU 2026 demo) — MEP Space Name must be a member of the approved
+# handover vocabulary, with deterministic canonicalisation of known variants.
+#
+# NL sentence this rule came from:
+#   "Every MEP space name must come from the approved space-naming list;
+#    fix the obvious variants automatically."
+#
+# What it demonstrates, in one screen (v1.4-K21 reference-data check):
+#   * exact member                 -> compliant (Tier 1)
+#   * case/alias variant           -> ONE canonical value, computed, not guessed
+#                                     ("RESTROOM" -> "Restroom")           (Tier 2)
+#   * anything else ("R","Space")  -> NO suggested value -> Path A ACC Issue
+#                                     for a human. Fuzzy matching is Phase 2,
+#                                     and would still need approval. (Tier 3)
+#
+# The list lives in config/reference.mep_space_names.yaml — a file a BIM
+# manager reads and edits. Changing the vocabulary is editing data, not code.
+scenario: mep_space_naming
+target_category: Spaces
+
+rules:
+  - id: spaces.name.approved_vocabulary
+    parameter: Name
+    requirement: canonical_format
+    category: Spaces
+    severity_tag: naming_violation
+    severity_level: severity_low
+    description: >-
+      MEP Space Name must be one of the approved handover names; known
+      variants (case, alias, separator) canonicalise deterministically.
+    fixability: auto
+    autofill:
+      strategy: normalize
+      normalize_kind: reference
+      normalize_reference: mep_space_names
+    remediation:
+      action: set_parameter
+      target: instance
+
+geometry_rules: []

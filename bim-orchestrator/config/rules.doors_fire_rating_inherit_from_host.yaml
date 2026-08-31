@@ -1,0 +1,32 @@
+scenario: doors_fire_rating_inherit_from_host
+target_category: Doors
+rules:
+- id: doors.fire_rating.inherit_from_host
+  parameter: Fire Rating
+  requirement: present_and_nonempty
+  category: Doors
+  severity_tag: rule_violation
+  severity_level: severity_medium
+  description: All doors must have a Fire Rating parameter set; if empty, inherit
+    from the host wall's Fire Rating
+  autofill:
+    strategy: inherit_from_host
+    host_param: Fire Rating
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: auto
+  remediation:
+    action: set_parameter
+    new_value_strategy: inferred
+    target: auto
+  requires_human: false
+  extraction_meta:
+    confidence: 1.0
+    source_text: All doors must have a Fire Rating parameter set; if empty, inherit
+      from the host wall's Fire Rating
+    source_location: Rule Builder (UI)
+    extracted_by: ''
+    extracted_at: ''
+    execution_status: executable
+geometry_rules: []

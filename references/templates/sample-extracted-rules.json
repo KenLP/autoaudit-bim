@@ -1,0 +1,87 @@
+{
+  "scenario": "sample_room_compliance",
+  "target_category": "Rooms",
+  "source": {
+    "document": "Sample_BEP.pdf",
+    "reference": "Synthetic example for json_to_yaml.py roundtrip test",
+    "extracted_date": "2026-05-31"
+  },
+  "rules": [
+    {
+      "id": "room.area.residential_min",
+      "parameter": "areaMetric",
+      "requirement": "numeric_min_conditional",
+      "threshold": 10.0,
+      "when_param": "Occupancy",
+      "when_pattern": "^Residential",
+      "severity_tag": "geometric_violation",
+      "description": "Residential rooms must have a floor area of at least 10 m2. Geometric violation -- humans must rework walls; agent flags only.",
+      "fixability": "manual",
+      "remediation": {
+        "action": "create_acc_issue",
+        "comments_template": "BEP Sec.1.1 non-compliant: area {value} m2 < 10 m2 minimum"
+      },
+      "citation": {
+        "mode": "hard",
+        "source_filter": ["BEP.txt"],
+        "on_missing": "warn"
+      },
+      "autofill": {
+        "strategy": "none",
+        "fallback": null
+      }
+    },
+    {
+      "id": "room.number.unique",
+      "parameter": "Number",
+      "requirement": "unique_in_set",
+      "severity_tag": "duplicate_identifier",
+      "description": "Room numbers must be unique across the project. Duplicates are programmatically renumberable.",
+      "fixability": "auto",
+      "remediation": {
+        "action": "set_parameter",
+        "target_parameter": "Number",
+        "new_value_strategy": "next_available",
+        "comments_template": "Renamed Number from '{old_value}' -- BEP Sec.1.5 duplicate flag"
+      },
+      "citation": {
+        "mode": "hard",
+        "source_filter": ["BEP.txt"],
+        "on_missing": "warn"
+      },
+      "autofill": {
+        "strategy": "none",
+        "fallback": null
+      }
+    },
+    {
+      "id": "room.number.format",
+      "parameter": "Number",
+      "requirement": "matches_regex",
+      "pattern": "^[A-Z]?\\d{3}[A-Z]?$",
+      "severity_tag": "missing_optional_param",
+      "description": "Room number should follow firm convention (e.g., 101, A203B)",
+      "fixability": "manual",
+      "remediation": {
+        "action": "create_acc_issue",
+        "comments_template": "Room number '{value}' does not match expected pattern"
+      },
+      "citation": {
+        "mode": "soft",
+        "source_filter": [],
+        "on_missing": "warn"
+      },
+      "autofill": {
+        "strategy": "none",
+        "fallback": null
+      }
+    }
+  ],
+  "unmachineable": [
+    {
+      "section": "Sec.3.1",
+      "text": "Design shall be visually harmonious with surroundings",
+      "reason": "subjective"
+    }
+  ]
+}

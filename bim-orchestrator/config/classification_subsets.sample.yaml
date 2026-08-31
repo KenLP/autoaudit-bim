@@ -1,0 +1,33 @@
+# Classification subsets — category → valid classification codes (SAMPLE).
+#
+# Phase 2 GĐ2. This table is what turns a slice of "meaning" into a deterministic
+# MEMBERSHIP check: given an element's category, which classification codes are
+# valid for it? The remediation closed loop ("value_in_subset") uses it to reject
+# a well-formed-but-wrong code (e.g. a window code proposed for a door) by
+# machine — no LLM judge, no human needed for that class of error.
+#
+# Keys are OSTCatalog display names (resolved via policies/ost_catalog, so
+# "door"/"Doors" both match). Values are the allowed codes for that category.
+#
+# ⚠️ SAMPLE/illustrative codes — verify against the authoritative NBS Uniclass
+# 2015 tables before production use. The mechanism is the deliverable here, not
+# this exact code list. Add a category by editing this file (data, not code).
+# Each category maps to {code: definition}. The definitions are fed to the model
+# (it picks the semantically-right code from the candidate set) and the chosen
+# code's definition is kept as evidence for the human reviewer (GĐ2 step 4).
+version: 1
+system: Uniclass2015
+subsets:
+  Doors:
+    Pr_30_59_24: Doorsets
+    Pr_30_59_24_14: Fire-resisting doorsets
+    Pr_30_59_24_85: Sliding doorsets
+  Windows:
+    Pr_30_59_98: Windows
+    Pr_30_59_98_97: Window units
+  Walls:
+    Ss_25_10_30: Framed wall systems
+    Ss_25_10_50: Masonry wall systems
+  Furniture:
+    Pr_40_50_12: Seating
+    Pr_40_50_91: Tables and table systems

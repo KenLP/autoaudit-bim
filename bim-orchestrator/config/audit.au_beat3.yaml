@@ -1,0 +1,20 @@
+# AU 2026 Beat 3 — live Snowdon, dry-run rehearsal profile.
+# dry_run TRUE + propose_only TRUE: exercises the full decision path (query →
+# QC → routing → proposal bodies) while creating no ACC issue and writing
+# nothing to the model. Flip dry_run to false only on the day, deliberately.
+name: au_beat3
+rules:
+  - rules.au_snowdon.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: true
+  propose_only: true
+unattended:
+  enabled: false

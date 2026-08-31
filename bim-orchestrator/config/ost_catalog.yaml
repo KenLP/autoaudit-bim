@@ -1,0 +1,530 @@
+# OST Catalog — v1.3 foundation for rules-driven Query Agents.
+#
+# Purpose
+# -------
+# Single source of truth that maps a compliance-friendly label
+# (the string a rule author writes in Rule.category) to:
+#   * `ost`         — Revit BuiltInCategory enum string. Used by
+#                     RevitMCPClient.list_elements(category=...).
+#   * `aecdm_label` — Forma/AECDM display label. Used by
+#                     FormaMCPClient.query_elements(category=...). May be
+#                     null when AECDM doesn't expose that category — the
+#                     loader warns and skips it for AECDM-backed runs.
+#   * `display`     — human-readable name shown in reports / UI.
+#   * `discipline`  — coarse grouping (architecture | structure | mep) for
+#                     filtering + reporting only; not used at dispatch time.
+#   * `aliases`     — alternative spellings (singular forms, abbreviations,
+#                     Vietnamese names) that should resolve to this entry.
+#
+# Schema
+# ------
+# version: 1
+# categories:
+#   - key: <internal-stable-id, kebab-case>
+#     display: <Pretty Name>
+#     aecdm_label: <AECDM category string | null>
+#     ost: OST_<BuiltInCategory>
+#     discipline: <architecture | structure | mep>
+#     aliases: [<str>, ...]   # optional
+#
+# Resolution behaviour (policies/ost_catalog.py)
+# ----------------------------------------------
+#   resolve(label, backend) →
+#     1. exact match on `key`         (case-sensitive)
+#     2. exact match on `display`     (case-sensitive)
+#     3. case-insensitive match on display / key / aliases
+#     4. Levenshtein distance ≤ 2 against display + aliases (typo tolerance)
+#     5. unknown → log warn + return None (rule author sees a clear error,
+#        not a silent zero-finding run)
+#
+# Backend selection
+# -----------------
+#   backend='revit' → returns entry.ost
+#   backend='aecdm' → returns entry.aecdm_label (may be null → skip + warn)
+#
+# Adding a new category
+# ---------------------
+# When a rule needs a category not listed here:
+#   1. Add an entry below in the right discipline section.
+#   2. Set `ost` from Revit's BuiltInCategory enum (verify spelling — Revit
+#      has quirks like OST_SpecialityEquipment (sic), OST_CurtaSystem,
+#      OST_StructConnections, OST_Wire (singular)).
+#   3. Set `aecdm_label` to the AECDM-exposed name if known; null otherwise.
+#      A null label is honest — better than guessing and getting a silent
+#      query failure on AECDM-backed runs.
+#   4. Add at least the singular alias for English categories.
+
+version: 1
+
+categories:
+  # --------------------------------------------------------------------
+  # Architecture
+  # --------------------------------------------------------------------
+  - key: walls
+    display: Walls
+    aecdm_label: Walls
+    ost: OST_Walls
+    discipline: architecture
+    aliases: [Wall, Tường]
+
+  - key: doors
+    display: Doors
+    aecdm_label: Doors
+    ost: OST_Doors
+    discipline: architecture
+    aliases: [Door, Cửa, Cửa đi]
+
+  - key: windows
+    display: Windows
+    aecdm_label: Windows
+    ost: OST_Windows
+    discipline: architecture
+    aliases: [Window, Cửa sổ]
+
+  - key: floors
+    display: Floors
+    aecdm_label: Floors
+    ost: OST_Floors
+    discipline: architecture
+    aliases: [Floor, Slab, Sàn]
+
+  - key: ceilings
+    display: Ceilings
+    aecdm_label: Ceilings
+    ost: OST_Ceilings
+    discipline: architecture
+    aliases: [Ceiling, Trần]
+
+  - key: roofs
+    display: Roofs
+    aecdm_label: Roofs
+    ost: OST_Roofs
+    discipline: architecture
+    aliases: [Roof, Mái]
+
+  - key: rooms
+    display: Rooms
+    aecdm_label: Rooms
+    ost: OST_Rooms
+    discipline: architecture
+    aliases: [Room, Phòng]
+
+  - key: areas
+    display: Areas
+    aecdm_label: Areas
+    ost: OST_Areas
+    discipline: architecture
+    aliases: [Area]
+
+  # MEP Spaces — the analytical twin of a Room: MEP quantities (airflow,
+  # loads, ventilation) are computed PER SPACE, and Space Name/Number drive
+  # the handover schedules. Distinct from `rooms` (OST_Rooms): a model can
+  # carry both, and a duct belongs to a Space, not a Room.
+  # aecdm_label deliberately null — not verified against a live AECDM model
+  # (2026-08-01); Revit-backed runs are unaffected, AECDM runs warn + skip.
+  - key: spaces
+    display: Spaces
+    aecdm_label: null
+    ost: OST_MEPSpaces
+    discipline: mep
+    aliases: [Space, MEP Space, MEP Spaces, Không gian]
+
+  - key: stairs
+    display: Stairs
+    aecdm_label: Stairs
+    ost: OST_Stairs
+    discipline: architecture
+    aliases: [Stair, Cầu thang]
+
+  - key: stairs-runs
+    display: Stair Runs
+    aecdm_label: Stair Runs  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_StairsRuns
+    discipline: architecture
+    aliases: [Stair Run, Run]
+
+  - key: stairs-landings
+    display: Stair Landings
+    aecdm_label: Stair Landings  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_StairsLandings
+    discipline: architecture
+    aliases: [Stair Landing, Landing]
+
+  - key: stairs-railings
+    display: Railings
+    aecdm_label: Railings
+    ost: OST_StairsRailing
+    discipline: architecture
+    aliases: [Railing, Handrail, Lan can]
+
+  - key: ramps
+    display: Ramps
+    aecdm_label: Ramps
+    ost: OST_Ramps
+    discipline: architecture
+    aliases: [Ramp, Đường dốc]
+
+  - key: curtain-panels
+    display: Curtain Panels
+    aecdm_label: Curtain Panels
+    ost: OST_CurtainWallPanels
+    discipline: architecture
+    aliases: [Curtain Wall Panel, Curtain Panel]
+
+  - key: curtain-mullions
+    display: Curtain Wall Mullions
+    aecdm_label: Curtain Wall Mullions
+    ost: OST_CurtainWallMullions
+    discipline: architecture
+    aliases: [Mullion, Mullions]
+
+  - key: curtain-systems
+    display: Curtain Systems
+    aecdm_label: Curtain Systems
+    ost: OST_CurtaSystem  # sic — Revit's enum spelling
+    discipline: architecture
+    aliases: [Curtain System]
+
+  - key: furniture
+    display: Furniture
+    aecdm_label: Furniture
+    ost: OST_Furniture
+    discipline: architecture
+    aliases: [Nội thất]
+
+  - key: furniture-systems
+    display: Furniture Systems
+    aecdm_label: Furniture Systems
+    ost: OST_FurnitureSystems
+    discipline: architecture
+    aliases: [Furniture System]
+
+  - key: casework
+    display: Casework
+    aecdm_label: Casework
+    ost: OST_Casework
+    discipline: architecture
+    aliases: [Tủ kệ]
+
+  - key: specialty-equipment
+    display: Specialty Equipment
+    aecdm_label: Specialty Equipment
+    ost: OST_SpecialityEquipment  # sic — Revit's enum spelling
+    discipline: architecture
+    aliases: [Speciality Equipment]
+
+  - key: generic-models
+    display: Generic Models
+    aecdm_label: Generic Models
+    ost: OST_GenericModel
+    discipline: architecture
+    aliases: [Generic Model]
+
+  - key: planting
+    display: Planting
+    aecdm_label: Planting
+    ost: OST_Planting
+    discipline: architecture
+    aliases: [Plant, Cây xanh]
+
+  # --------------------------------------------------------------------
+  # Structure
+  # --------------------------------------------------------------------
+  - key: structural-columns
+    display: Structural Columns
+    aecdm_label: Structural Columns
+    ost: OST_StructuralColumns
+    discipline: structure
+    aliases: [Columns, Column, Cột]
+
+  - key: structural-framing
+    display: Structural Framing
+    aecdm_label: Structural Framing
+    ost: OST_StructuralFraming
+    discipline: structure
+    aliases: [Beams, Beam, Braces, Brace, Dầm]
+
+  - key: structural-foundation
+    display: Structural Foundations
+    aecdm_label: Structural Foundations
+    ost: OST_StructuralFoundation
+    discipline: structure
+    aliases: [Foundation, Foundations, Móng]
+
+  - key: structural-truss
+    display: Structural Trusses
+    aecdm_label: Structural Trusses  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_StructuralTruss
+    discipline: structure
+    aliases: [Truss, Trusses, Giàn]
+
+  - key: structural-stiffener
+    display: Structural Stiffeners
+    aecdm_label: Structural Stiffeners  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_StructuralStiffener
+    discipline: structure
+    aliases: [Stiffener, Stiffeners]
+
+  - key: structural-connections
+    display: Structural Connections
+    aecdm_label: Structural Connections  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_StructConnections  # sic — Revit's enum spelling
+    discipline: structure
+    aliases: [Connection, Connections]
+
+  - key: structural-rebar
+    display: Structural Rebar
+    aecdm_label: Structural Rebar  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_Rebar
+    discipline: structure
+    aliases: [Rebar, Cốt thép]
+
+  - key: rebar-area
+    display: Area Reinforcement
+    aecdm_label: Area Reinforcement  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_AreaRein
+    discipline: structure
+    aliases: [Area Rebar, Area Rein]
+
+  - key: rebar-path
+    display: Path Reinforcement
+    aecdm_label: Path Reinforcement  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_PathRein
+    discipline: structure
+    aliases: [Path Rebar, Path Rein]
+
+  - key: fabric-areas
+    display: Fabric Areas
+    aecdm_label: Fabric Areas  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_FabricAreas
+    discipline: structure
+    aliases: [Fabric Area]
+
+  - key: fabric-reinforcement
+    display: Fabric Reinforcement
+    aecdm_label: Fabric Reinforcement  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_FabricReinforcement
+    discipline: structure
+    aliases: [Fabric Rebar]
+
+  # --------------------------------------------------------------------
+  # MEP — HVAC
+  # --------------------------------------------------------------------
+  - key: mechanical-equipment
+    display: Mechanical Equipment
+    aecdm_label: Mechanical Equipment
+    ost: OST_MechanicalEquipment
+    discipline: mep
+    aliases: [HVAC Equipment, Thiết bị cơ]
+
+  - key: ducts
+    display: Ducts
+    aecdm_label: Ducts
+    ost: OST_DuctCurves
+    discipline: mep
+    aliases: [Duct, Duct Curves, Ống gió]
+
+  - key: duct-fittings
+    display: Duct Fittings
+    aecdm_label: Duct Fittings
+    ost: OST_DuctFitting
+    discipline: mep
+    aliases: [Duct Fitting]
+
+  - key: duct-accessories
+    display: Duct Accessories
+    aecdm_label: Duct Accessories
+    ost: OST_DuctAccessory
+    discipline: mep
+    aliases: [Duct Accessory, Damper, VAV]
+
+  - key: air-terminals
+    display: Air Terminals
+    aecdm_label: Air Terminals
+    ost: OST_DuctTerminal
+    discipline: mep
+    aliases: [Air Terminal, Diffuser, Grille]
+
+  - key: duct-insulations
+    display: Duct Insulations
+    aecdm_label: Duct Insulations  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_DuctInsulations
+    discipline: mep
+    aliases: [Duct Insulation]
+
+  - key: flex-ducts
+    display: Flex Ducts
+    aecdm_label: Flex Ducts
+    ost: OST_FlexDuctCurves
+    discipline: mep
+    aliases: [Flexible Duct, Flex Duct]
+
+  # --------------------------------------------------------------------
+  # MEP — Plumbing
+  # --------------------------------------------------------------------
+  - key: pipes
+    display: Pipes
+    aecdm_label: Pipes
+    ost: OST_PipeCurves
+    discipline: mep
+    aliases: [Pipe, Piping, Đường ống]
+
+  - key: pipe-fittings
+    display: Pipe Fittings
+    aecdm_label: Pipe Fittings
+    ost: OST_PipeFitting
+    discipline: mep
+    aliases: [Pipe Fitting]
+
+  - key: pipe-accessories
+    display: Pipe Accessories
+    aecdm_label: Pipe Accessories
+    ost: OST_PipeAccessory
+    discipline: mep
+    aliases: [Pipe Accessory, Valve]
+
+  - key: pipe-insulations
+    display: Pipe Insulations
+    aecdm_label: Pipe Insulations  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_PipeInsulations
+    discipline: mep
+    aliases: [Pipe Insulation]
+
+  - key: flex-pipes
+    display: Flex Pipes
+    aecdm_label: Flex Pipes
+    ost: OST_FlexPipeCurves
+    discipline: mep
+    aliases: [Flexible Pipe, Flex Pipe]
+
+  - key: plumbing-fixtures
+    display: Plumbing Fixtures
+    aecdm_label: Plumbing Fixtures
+    ost: OST_PlumbingFixtures
+    discipline: mep
+    aliases: [Plumbing Fixture, Thiết bị vệ sinh]
+
+  - key: sprinklers
+    display: Sprinklers
+    aecdm_label: Sprinklers
+    ost: OST_Sprinklers
+    discipline: mep
+    aliases: [Sprinkler, Đầu phun]
+
+  # --------------------------------------------------------------------
+  # MEP — Electrical
+  # --------------------------------------------------------------------
+  - key: electrical-equipment
+    display: Electrical Equipment
+    aecdm_label: Electrical Equipment
+    ost: OST_ElectricalEquipment
+    discipline: mep
+    aliases: [Panel, Switchgear, Thiết bị điện]
+
+  - key: electrical-fixtures
+    display: Electrical Fixtures
+    aecdm_label: Electrical Fixtures
+    ost: OST_ElectricalFixtures
+    discipline: mep
+    aliases: [Electrical Fixture, Receptacle, Outlet]
+
+  - key: lighting-fixtures
+    display: Lighting Fixtures
+    aecdm_label: Lighting Fixtures
+    ost: OST_LightingFixtures
+    discipline: mep
+    aliases: [Lighting Fixture, Light, Đèn]
+
+  - key: lighting-devices
+    display: Lighting Devices
+    aecdm_label: Lighting Devices
+    ost: OST_LightingDevices
+    discipline: mep
+    aliases: [Lighting Device, Switch]
+
+  - key: data-devices
+    display: Data Devices
+    aecdm_label: Data Devices
+    ost: OST_DataDevices
+    discipline: mep
+    aliases: [Data Device]
+
+  - key: communication-devices
+    display: Communication Devices
+    aecdm_label: Communication Devices
+    ost: OST_CommunicationDevices
+    discipline: mep
+    aliases: [Communication Device]
+
+  - key: fire-alarm-devices
+    display: Fire Alarm Devices
+    aecdm_label: Fire Alarm Devices
+    ost: OST_FireAlarmDevices
+    discipline: mep
+    aliases: [Fire Alarm, Smoke Detector]
+
+  - key: security-devices
+    display: Security Devices
+    aecdm_label: Security Devices
+    ost: OST_SecurityDevices
+    discipline: mep
+    aliases: [Security Device]
+
+  - key: nurse-call-devices
+    display: Nurse Call Devices
+    aecdm_label: Nurse Call Devices  # v1.3-T1 live-verified 2026-06-04
+    ost: OST_NurseCallDevices
+    discipline: mep
+    aliases: [Nurse Call]
+
+  - key: cable-tray
+    display: Cable Trays
+    aecdm_label: Cable Trays
+    ost: OST_CableTray
+    discipline: mep
+    aliases: [Cable Tray, Máng cáp]
+
+  - key: cable-tray-fittings
+    display: Cable Tray Fittings
+    aecdm_label: Cable Tray Fittings
+    ost: OST_CableTrayFitting
+    discipline: mep
+    aliases: [Cable Tray Fitting]
+
+  - key: conduit
+    display: Conduits
+    aecdm_label: Conduits
+    ost: OST_Conduit
+    discipline: mep
+    aliases: [Conduit, Ống luồn dây]
+
+  - key: conduit-fittings
+    display: Conduit Fittings
+    aecdm_label: Conduit Fittings
+    ost: OST_ConduitFitting
+    discipline: mep
+    aliases: [Conduit Fitting]
+
+  - key: wires
+    display: Wires
+    aecdm_label: Wires
+    ost: OST_Wire  # sic — Revit's enum is singular
+    discipline: mep
+    aliases: [Wire, Wiring, Dây điện]
+
+  # --------------------------------------------------------------------
+  # Documentation — sheets/views. NOT model geometry, so these don't ride
+  # the generic list_elements/get_element_info fetch path the model
+  # categories use; the Revit query agent has a dedicated list_sheets
+  # branch that flattens Sheet Number / Sheet Name into element params.
+  # AECDM doesn't expose documentation elements → aecdm_label null
+  # (skipped + warned on Forma-backed runs). `discipline` is a coarse
+  # reporting bucket only; sheets are cross-discipline, filed under
+  # architecture by convention.
+  # --------------------------------------------------------------------
+  - key: sheets
+    display: Sheets
+    aecdm_label: null
+    ost: OST_Sheets
+    discipline: architecture
+    aliases: [Sheet, Drawing Sheet, Bản vẽ]

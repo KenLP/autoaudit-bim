@@ -1,0 +1,104 @@
+[project]
+name = "bim-orchestrator"
+version = "0.1.0"
+description = "Multi-agent BIM quality assurance orchestrator for AU 2026"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Ken Phuc" }]
+dependencies = [
+    "langgraph>=0.2.50",
+    # Upper bound is a guard rail, not a preference: `uv lock --upgrade`
+    # without --upgrade-package will happily jump to mcp 2.x, whose
+    # session/transport API changes land squarely on mcp_clients/ -- the one
+    # boundary this project treats as absolute. Lift it deliberately, with the
+    # stdio clients re-smoked against live Revit and Forma, never as a side
+    # effect of a routine upgrade.
+    "mcp>=1.2.0,<2",
+    "anthropic>=0.40.0",
+    "pydantic>=2.9",
+    "pyyaml>=6.0",
+    "structlog>=24.4",
+    "python-dotenv>=1.0",
+    "streamlit>=1.40",
+    "plotly>=5.24",
+    "httpx>=0.27",
+    "chromadb>=1.5.9",
+    "pypdf>=6.12.1",
+]
+
+[project.optional-dependencies]
+# The default RAG embedder. Split out of the base dependencies because
+# `sentence-transformers` is the sole parent of torch, and torch alone is
+# 476 MB of what used to be a 1.4 GB install -- paid by everyone who just
+# wanted to run `--demo`. The import is lazy and every RAG test injects its
+# own embedder, so nothing else in the project needs it present.
+#   uv sync --extra dev --extra rag
+rag = [
+    "sentence-transformers>=5.5.1",
+]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    # P3-2: the AuditHub service tests run as part of the default suite —
+    # dev mirrors the `service` group so `uv sync --extra dev` stays the one
+    # setup command.
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "sse-starlette>=2",
+    "psutil>=6",
+    # M2-A: POST /api/builder/ids-import is a multipart file upload.
+    "python-multipart>=0.0.9",
+]
+# P3-2: AuditHub service (localhost API :8601). `uv sync --extra dev --extra service`.
+service = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "sse-starlette>=2",
+    "psutil>=6",
+    "python-multipart>=0.0.9",
+]
+# `extraction` is intentionally EMPTY: `rules_extractor` (PDF->rule extraction,
+# GD3-C1 llm/extraction_bridge.py) is a local editable install from a sibling
+# repo (<path-to>/ExtractionAgents), not a published package — it cannot be
+# pinned as a universal dependency here. This group exists so the posture is
+# documented in the one place `uv` reads, not to actually resolve anything; see
+# CLAUDE.md "Tooling + commands" for the install command + the `uv sync`
+# exact-sync gotcha (M14, docs/reviews/REVIEW_MULTI_2026-07-04.md).
+extraction = []
+
+[project.scripts]
+bim-orchestrator = "bim_orchestrator.cli:main"
+autoaudit-service = "bim_orchestrator.service.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bim_orchestrator"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "live_axes: spawns the REAL lod-validator/spatial-qc venvs (P3-1) — run by hand, needs audit_services.yaml + BIM_LIVE_AXES=1",
+    "slow: full-product subprocess tests (~4s each, e.g. the --demo transcript snapshot) — included in the default run; the marker exists for deselection, not exclusion",
+]
+
+[dependency-groups]
+dev = []

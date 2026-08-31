@@ -1,0 +1,107 @@
+# Fire-Rating compliance rules (Phase 2 Week 7 — IBC Chapter 7)
+#
+# Targets walls AND doors in a single scenario, leveraging the
+# multi-category support added to QCAgent in W7 D1.
+#
+# Fire Rating in Revit lives on the Type, not the instance. The
+# RevitElementsQueryAgent (Phase 2 W7 D1) hoists Type-level Fire Rating
+# into ``element.params["Fire Rating"]`` and — for doors — mirrors the
+# host wall's Type Fire Rating under ``params["host.Fire Rating"]`` for
+# cross-element comparisons.
+#
+# (A separate `rules.fire_rating.yaml` exists from Phase 2 Week 4 Day 4
+# citation-policy demos — that one targets a synthetic single-category
+# Walls scenario with placeholder `FireRating` parameter. We keep both
+# files so the older demo tests continue to pass unchanged.)
+#
+# Demo arc on Snowdon Towers:
+#   * wall.type.fire_rating.required  → fires on every wall instance
+#       whose Type lacks Fire Rating (e.g. "Interior - Partition")
+#   * door.fire_rating.matches_host   → fires when host wall is rated
+#       higher than the door (NR door in 4HR wall, 90 MIN door in 2 HR wall)
+#   * door.fire_rating.required       → fires on doors whose Type has
+#       blank Fire Rating (distinct from "NR" which is explicit no-rating)
+#
+# Type-level write-back lands in Day 2's scope — for D1, all three rules
+# are tagged ``fixability: manual`` so they route to ACC Issues. Door
+# auto-fill via host wall rating is the W7 D3 deliverable.
+
+scenario: ibc_fire_rating
+target_category: [Walls, Doors]
+
+rules:
+  # ── Sec.706 fire walls: each wall type must declare a Fire Rating ─────
+  - id: wall.type.fire_rating.required
+    category: Walls
+    parameter: Fire Rating
+    requirement: present_and_nonempty
+    severity_tag: fire_safety_change
+    description: |
+      Every wall Type used in the project must declare a Fire Rating value
+      (e.g. "1 HR", "2 HR", "4 HR"). Empty Fire Rating on a wall Type means
+      the design intent is ambiguous - code reviewers cannot verify
+      compliance with IBC Sec.706 fire-resistance ratings.
+      Type-level fix affects every instance of that wall, so the agent
+      always routes this to ACC for human judgment.
+    fixability: manual
+    remediation:
+      action: create_acc_issue
+      comments_template: "IBC Sec.706: wall type has no Fire Rating declared"
+    citation:
+      mode: hard
+      source_filter: [IBC.txt]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null
+
+  # ── Sec.716 opening protectives: doors >= host wall rating ────────────
+  - id: door.fire_rating.matches_host
+    category: Doors
+    parameter: Fire Rating
+    requirement: fire_rating_ge
+    other_param: host.Fire Rating
+    severity_tag: fire_safety_change
+    description: |
+      A door installed in a fire-rated wall must itself be rated at least
+      as high as the host wall (IBC Sec.716). For example, a door labeled
+      "90 MIN" in a 2 HR (120 MIN) wall is non-compliant -- the opening
+      becomes the weakest link in the fire separation. "NR" (not rated)
+      doors in any rated wall trigger this rule. When the host wall is
+      itself unrated, this rule is out of scope and passes silently.
+    fixability: manual
+    remediation:
+      action: create_acc_issue
+      comments_template: "IBC Sec.716: door rating below host wall rating"
+    citation:
+      mode: hard
+      source_filter: [IBC.txt]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null
+
+  # ── Door Fire Rating must be populated (param completeness) ───────────
+  # Distinct from matches_host: this fires whenever the door Type's
+  # Fire Rating is BLANK (missing data). "NR" is an explicit no-rating
+  # value and passes this rule but may still fail matches_host.
+  - id: door.fire_rating.required
+    category: Doors
+    parameter: Fire Rating
+    requirement: present_and_nonempty
+    severity_tag: missing_required_param
+    description: |
+      Door Types must declare a Fire Rating value, even if "NR" for
+      non-rated assemblies. Blank Fire Rating fields indicate incomplete
+      type metadata and prevent automated code checking downstream.
+    fixability: manual
+    remediation:
+      action: create_acc_issue
+      comments_template: "Door type has no Fire Rating value -- declare 'NR' or a rated value"
+    citation:
+      mode: hard
+      source_filter: [IBC.txt]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null

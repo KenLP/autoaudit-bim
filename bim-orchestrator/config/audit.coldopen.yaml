@@ -1,0 +1,30 @@
+# AU 2026 cold-open profile (2026-08-24).
+#
+# Quick Run's checklist is NOT a listing of config/rules.*.yaml — it is the
+# UNION of every rule file referenced by an existing profile's `rules:` list
+# (autoaudit-ui RunPage.tsx: `ruleOptions = profiles.flatMap(p => p.rules)`).
+# A file freshly saved by the Rule Builder therefore never appears there,
+# no matter how successfully it saved — it belongs to no profile yet. This
+# profile is that missing reference for the cold-open rule specifically, so
+# it shows up under the **Profile** tab (not Quick Run) the moment it exists
+# on disk — no service restart, /api/profiles globs config/audit.*.yaml live.
+#
+# dry_run FALSE, no propose_only: same posture as au_beat3 on the day (dry_run
+# flipped to false deliberately) — this run is meant to raise a real
+# approve-gated ACC proposal for the Approvals-tab beat of the cold open.
+
+name: coldopen
+rules:
+  - rules.coldopen_door_fire_rating.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: false
+unattended:
+  enabled: false

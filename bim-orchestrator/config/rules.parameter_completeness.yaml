@@ -1,0 +1,44 @@
+# Parameter completeness rules for Rooms (Phase 1 MVP scenario)
+#
+# Each rule produces a finding when a Room element lacks the required parameter
+# or holds an invalid value. The QC Agent reads this file and matches against
+# elements returned by the Query Agent.
+
+scenario: parameter_completeness
+target_category: Rooms
+
+rules:
+  - id: room.department.required
+    parameter: Department
+    requirement: present_and_nonempty
+    severity_tag: missing_required_param
+    description: Every room must declare a department for cost allocation
+    autofill:
+      strategy: infer_from_adjacent
+      fallback: "UNASSIGNED"
+
+  - id: room.occupancy.required
+    parameter: OccupancyType
+    requirement: present_and_nonempty
+    severity_tag: missing_required_param
+    description: Occupancy type drives egress and ventilation calculations
+    autofill:
+      strategy: infer_from_room_name
+      fallback: null  # if cannot infer, escalate to approval
+
+  - id: room.area.positive
+    parameter: Area
+    requirement: positive_number
+    severity_tag: invalid_value_range
+    description: Area must be > 0 (catches placeholder rooms)
+    autofill:
+      strategy: none  # geometry-derived, do not auto-fill
+
+  - id: room.number.format
+    parameter: Number
+    requirement: matches_regex
+    pattern: "^[A-Z]?\\d{3}[A-Z]?$"
+    severity_tag: missing_optional_param
+    description: Room number should follow firm convention (e.g., 101, A203B)
+    autofill:
+      strategy: none

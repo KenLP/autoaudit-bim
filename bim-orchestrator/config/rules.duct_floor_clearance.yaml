@@ -1,0 +1,55 @@
+# Case 3 v2 (Ken, 2026-08-18) — the GEOMETRY half of the two-rule duct run.
+#
+# Pairs with rules.duct_mark.yaml in ONE command (K6 multi-scenario merge —
+# rules and geometry_rules concatenate across files):
+#
+#   uv run bim-orchestrator --run-revit ^
+#       --rules config\rules.duct_mark.yaml config\rules.duct_floor_clearance.yaml --dry-run
+#
+# Model: R27_Snowdon Towers Sample PLUMBING (hosts the ducts) with the
+# ARCHITECTURAL model linked (hosts the floors) — the reference set crosses a
+# LINK boundary (reference_source: linked_arch, K26 discipline matching).
+#
+# ✅ MEASURED LIVE 2026-08-20 (run-041fb089, dry-run, 0 writes): 25 violations
+# out of the 181 ducts submitted, measured 60.3 mm … 1930.4 mm. `linked_arch`
+# resolved to link id 1362429 ("R27_Snowdon Towers Sample Architectural.rvt")
+# with NO reference_link_hint — of the model's four links only one carries the
+# word "Architectural". Numbers pinned against a live sample model.
+#
+# Two things this rule cannot tell you, by construction:
+#   * There is no PASS set. The addin returns {clashCount, clashes} — only
+#     violations — so "25 of 181 measured OK" is NOT a statement this check
+#     supports. `limited: false` in the envelope means nothing was truncated.
+#   * The count never reaches the CLI headline: geometry findings ride the K7
+#     bucket, outside QC's 4 outcomes. Read it from metadata.json
+#     (`non_compliant_count`) or the run's report.md.
+#
+# Rerunning on another machine: open the Plumbing model with the Architectural
+# link loaded, and re-check `view_id` below — a view id is per-document.
+#
+# Threshold: 2100 mm headroom UNDER the duct to the floor below it — a person
+# must walk under the run. Tune at rehearsal if the story needs a different
+# code anchor; the mechanism (measured mm, link-crossing, refuse-to-invent)
+# is the demo, not the specific number.
+
+scenario: duct_floor_clearance
+target_category: Ducts
+rules: []
+geometry_rules:
+  - id: ducts.floor_headroom_min
+    category: Ducts
+    check_type: clearance_min
+    description: >-
+      A duct must keep at least 2100 mm clear to the floor BELOW it (headroom
+      under the run). Reference floors live in the LINKED architectural model
+      — the check crosses the link boundary and measures real millimetres.
+    threshold_mm: 2100
+    clearance_direction: below
+    reference_category: Floors
+    reference_source: linked_arch
+    # view_id 1750176 = "{3D}" — the Plumbing model's default 3D view, read live
+    # from revit_get_views on 2026-08-20. Required for the axis=Z raycast: with
+    # a floor plan active the addin returns nothing (see rules.clearance_probe
+    # header for the same requirement).
+    view_id: 1750176
+    severity_tag: geometric_violation

@@ -1,0 +1,14 @@
+# Streamlit theme for the BIM Orchestrator UI (streamlit_app/app.py).
+# Picked up when launching from bim-orchestrator/ (the documented launch cwd):
+#   uv run streamlit run streamlit_app/app.py
+
+[theme]
+base = "light"
+# Construction-safety orange — primary buttons (Run, Save, Apply) + active tab.
+primaryColor = "#E8710A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F3EF"
+textColor = "#1F2328"
+
+[browser]
+gatherUsageStats = false

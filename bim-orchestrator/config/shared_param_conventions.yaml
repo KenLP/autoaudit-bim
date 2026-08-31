@@ -1,0 +1,87 @@
+# Curated conventions for well-known openBIM / deliverable parameters that are
+# NOT reliable native Revit built-ins — so they never appear in the live-probed
+# `param_catalog.<ver>.yaml` (which only carries what a model actually exposes).
+#
+# Purpose: GROUND the Rule Builder so a COBie / classification / IFC-Pset rule
+# binds to the AGREED parameter name (and the right membership reference set)
+# instead of the LLM inventing one. This is the PARAMETER-layer companion to
+# `param_catalog` (built-ins) — it does NOT guarantee the model carries the
+# parameter; the BIM team adds it as a shared parameter per the project BEP.
+# The Rule Builder still offers the ✏️ Khác / `bound_parameter` escape for any
+# project-specific name not listed here.
+#
+# Sources: IFC4 Pset_*Common (buildingSMART), COBie 2.4 / NBIMS-US V3, ISO 19650,
+# the Revit IFC shared-parameter file (IFC Shared Parameters-RevitIFCBuiltIn_ALL).
+# `reference:` names the membership set a value-constraint rule should cite — that
+# set may live in a private rule pack (resolved by the engine's config/ fallback),
+# so this PUBLIC file names it without shipping the picklist itself.
+version: 1
+conventions:
+  # ── COBie 2.4 (mandatory "yellow" Type/Component fields) ───────────────────
+  - parameter: COBie.Type.Category
+    standard: COBie 2.4 / OmniClass Table 23
+    binding: type
+    dimension: text
+    applies_to: [Doors, Windows, Walls, Ducts, Pipes]
+    intent: [cobie category, type category, product category, omniclass category]
+    reference: omniclass_table23
+    note: Mandatory COBie type field; value from the OmniClass Table 23 product picklist.
+  - parameter: COBie.Type.Manufacturer
+    standard: COBie 2.4
+    binding: type
+    dimension: text
+    applies_to: [Doors, Windows, Ducts, Pipes]
+    intent: [manufacturer, cobie manufacturer, maker]
+    note: Mandatory COBie type field — presence check (non-empty).
+  - parameter: COBie.Type.ModelNumber
+    standard: COBie 2.4
+    binding: type
+    dimension: text
+    applies_to: [Doors, Windows, Ducts, Pipes]
+    intent: [model number, cobie model, model no]
+    note: Mandatory COBie type field — presence check (non-empty).
+  - parameter: COBie.Component.Space
+    standard: COBie 2.4
+    binding: instance
+    dimension: text
+    applies_to: [Doors, Windows, Ducts, Pipes]
+    intent: [containing space, cobie space, component space]
+    note: Component's containing space — referential field (presence).
+
+  # ── Classification (bSDD / Uniclass 2015 / OmniClass) ─────────────────────
+  - parameter: Assembly Code
+    standard: Uniformat / OmniClass (Revit native classification slot)
+    binding: type
+    dimension: text
+    applies_to: [Walls, Floors, Doors, Windows, Ducts, Pipes, Structural Framing,
+                 Structural Columns, Mechanical Equipment, Electrical Equipment,
+                 Plumbing Fixtures, Sprinklers]
+    intent: [classification, classification code, assembly code, uniformat, omniclass]
+    reference: classification_codes
+    note: >-
+      Revit's built-in classification slot; constrain to a bSDD/Uniformat picklist.
+      MEP maintainable-asset categories (Mechanical/Electrical Equipment, Plumbing
+      Fixtures, Sprinklers) added 2026-07-12 — "Fire Protection" has no OST label in
+      ost_catalog.yaml, so Sprinklers (OST_Sprinklers) stands in for it.
+  - parameter: Classification Number
+    standard: Uniclass 2015 / OmniClass (Revit IFC classification slot — IfcClassificationReference)
+    binding: type
+    dimension: text
+    applies_to: [Doors, Windows, Walls]
+    intent: [uniclass, classification number, pr code, product classification, ifc classification]
+    reference: uniclass_pr
+    note: >-
+      Verified live on R27 — Revit exposes "Classification Number" (+ "Classification
+      Title", read-only) as the IFC classification slot; value must be a valid code.
+
+  # ── IFC Pset_*Common energy / U-value ─────────────────────────────────────
+  - parameter: Thermal Transmittance (U)
+    standard: Pset_WallCommon.ThermalTransmittance (U-value, W/m²K)
+    binding: type
+    dimension: thermal_transmittance
+    applies_to: [Walls, Roofs, Windows]
+    intent: [u-value, u value, thermal transmittance, heat transfer coefficient]
+    note: >-
+      Verified live on R27 — the Revit param is "Thermal Transmittance (U)" (IFC name
+      ThermalTransmittance); stored internally in W/m²K and READ-ONLY, so a value rule
+      is check-only (Path A), never a write target.

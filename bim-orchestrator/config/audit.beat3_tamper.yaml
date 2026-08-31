@@ -1,0 +1,13 @@
+name: beat3_tamper_setup
+rules:
+  - rules.au_snowdon.yaml
+axes:
+  lod: {enabled: false}
+  spatial: {enabled: false}
+run:
+  mode: run_revit
+  max_elements: 400
+  max_issues: 10
+  dry_run: false
+  propose_only: true
+unattended: {enabled: false}

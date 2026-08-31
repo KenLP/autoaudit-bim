@@ -1,0 +1,44 @@
+scenario: bca_stair_run_clear_width
+target_category: Stair Runs
+rules:
+- id: bca.stair.clear_width.min_1000mm
+  parameter: Clear Width
+  requirement: numeric_min
+  threshold: 1000.0
+  unit: mm
+  category: Stair Runs
+  severity_tag: geometric_violation
+  description: The clear width of every staircase run shall not be less than 1000
+    mm (BCA Acceptable Solutions E.3.3.1).
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+    target: instance
+  requires_human: false
+  rule_type: value_constraint
+  extraction_meta:
+    confidence: 0.92
+    source_text: The clear width of every staircase shall not be less than 1000 mm.
+    source_location: BCA Acceptable Solutions V7.08 §E.3.3.1
+    extracted_by: claude-sonnet-4-6
+    extracted_at: ''
+    execution_status: executable
+    notes:
+    - Bound to Revit instance param 'Actual Run Width' (OST_StairsRuns) — verify it
+      exists on the target model.
+    - Clear width measured per E.3.3.1 Note 2 (wall/balustrade faces; handrail projection
+      <=80mm excluded).
+  bound_parameter: Actual Run Width
+metadata:
+  source: BCA Acceptable Solutions V7.08 §E.3.3.1
+  contract_version: 1.4-K22.4
+  note: 'K22 binding: parameter is canonical intent (''Clear Width''); bound_parameter=''Actual
+    Run Width'' is the real Revit instance param used for fetch + feet->mm conversion
+    (now in REVIT_STORAGE_UNITS).'
+geometry_rules: []

@@ -1,0 +1,32 @@
+# Arc re-verification profile — 2026-08-03.
+#
+# Runs the live read path against the OPEN Snowdon model with BOTH the demo
+# parameter rules (what the nightly checks) and the clearance probe (what
+# nothing has ever checked live), and writes NOTHING anywhere:
+#
+#   * dry_run TRUE    — no ACC issue is created. The nightly profile sets this
+#     FALSE on purpose because creating the issue IS the propose act under
+#     test there; here the point is to exercise the decision path after twelve
+#     PRs changed it, not to add issues to a real project.
+#   * propose_only TRUE — belt as well as braces: even if dry_run were flipped
+#     by accident, every would-be-`auto` Path B write is demoted to `approve`.
+#
+# `max_elements: 300` is left at the default deliberately: Lighting Fixtures
+# has 514 instances, so the cap bites, and the run should say so out loud.
+name: arc_verify
+rules:
+  - rules.demo.yaml
+  - rules.clearance_probe.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: true
+  propose_only: true
+unattended:
+  enabled: false

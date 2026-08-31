@@ -1,0 +1,52 @@
+# Snowdon — PHASE 2 live staging (ONE rule, zero writes by construction).
+# Built 2026-08-15 for the AU slide #33 clip + live verification of the
+# three LLM agents against a real model.
+#
+# The 28 Snowdon doors whose Mark violates the numbering standard
+# (rules.au_snowdon.yaml `demo.doors.mark_naming` — measured 121/149 pass,
+# 2026-08-05) have PRESENT-but-WRONG values no deterministic canonicaliser
+# can repair ("P02", "OPN…" — the standard never mentioned those families).
+# That is exactly the Remediation agent's lane: llm_propose originates a
+# candidate Mark, the SAME matches_regex re-validates it, and everything
+# parks as ONE approve-gated proposal issue in ACC. Nothing writes:
+# LLM-proposed fixes can never reach autonomy "auto" (Phase 2 invariant),
+# and this file contains no other rule.
+#
+# ⚠️ The proposed Marks are format-valid but the LLM cannot know the right
+# room number — that is WHY the proposal is approve-gated and a human
+# reviews per element. Do NOT flip the parked issue to "In progress" unless
+# you actually want the watcher to write these. For the clip: show the
+# card, do not approve.
+
+scenario: snowdon_p2
+target_category: [Doors]
+metadata:
+  source: "Snowdon live — Phase 2 staging for AU slide #33 (2026-08-15)"
+  note: >-
+    One llm_propose rule over the 28 deterministically-unfixable door Marks.
+    Requires bim-orchestrator-llm installed + BIM_LLM_REMEDIATION=1;
+    without them every finding routes to a Path A issue, never a value.
+
+rules:
+  - id: p2.doors.mark_llm
+    parameter: Mark
+    requirement: matches_regex
+    pattern: "^(\\d{3}[A-Z]?|S\\d{2}[A-Z]?)$"
+    category: Doors
+    severity_tag: naming_violation
+    severity_level: severity_low
+    description: >-
+      Door Mark must follow the numbering standard: the room number with an
+      optional suffix letter (e.g. 102A), or S + level for stair doors
+      (e.g. S10, S11A). Phase 2 staging: no deterministic autofill — the
+      Remediation agent proposes, a human decides.
+    fixability: auto
+    autofill:
+      strategy: none
+    remediation:
+      action: set_parameter
+      target_parameter: Mark
+      new_value_strategy: llm_propose
+      target: instance
+
+geometry_rules: []

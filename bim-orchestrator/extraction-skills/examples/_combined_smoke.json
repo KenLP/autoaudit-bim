@@ -1,0 +1,85 @@
+{
+  "rulesets": [
+    {
+      "scenario": "bep_room_data_requirements",
+      "target_category": "Rooms",
+      "rules": [
+        {
+          "id": "bep.room.dept.required",
+          "rule_type": "parameter_completeness",
+          "category": "Rooms",
+          "parameter": "Department",
+          "requirement": "present_and_nonempty",
+          "severity_tag": "missing_required_param",
+          "description": "Every Room must declare a non-empty Department value (BEP §1.7).",
+          "fixability": "auto",
+          "autofill": {"strategy": "infer_from_room_name"},
+          "extraction_meta": {
+            "confidence": 0.94,
+            "source_text": "Every Room element shall carry a non-empty Department value.",
+            "source_location": "BEP §1.7",
+            "execution_status": "executable"
+          }
+        },
+        {
+          "id": "bep.lod.arch_sd_300",
+          "rule_type": "parameter_completeness",
+          "category": "Rooms",
+          "parameter": "LOD",
+          "requirement": "present_and_nonempty",
+          "severity_tag": "quality_change",
+          "description": "Architectural model shall reach LOD 300.",
+          "fixability": "manual",
+          "autofill": {"strategy": "none"},
+          "extraction_meta": {
+            "confidence": 0.30,
+            "source_text": "The architectural model shall be developed to LOD 300.",
+            "source_location": "BEP §5.1",
+            "execution_status": "not_model_checkable",
+            "status_reason": "LOD requires discipline-specific measurable criteria."
+          }
+        },
+        {
+          "id": "bep.room.number.format",
+          "rule_type": "naming_convention",
+          "category": "rooms",
+          "parameter": "Number",
+          "requirement": "matches_regex",
+          "pattern": "^\\d{3}[A-Z]?$",
+          "severity_tag": "naming_violation",
+          "description": "Room Number must match 3-digit + optional uppercase suffix.",
+          "fixability": "auto",
+          "autofill": {"strategy": "none"},
+          "remediation": {
+            "action": "rename_element",
+            "new_value_strategy": "inferred"
+          },
+          "extraction_meta": {
+            "confidence": 0.96,
+            "source_text": "Room numbers shall follow the format: 3-digit numeric.",
+            "source_location": "BEP §2.4",
+            "execution_status": "executable"
+          }
+        },
+        {
+          "id": "bep.room.low_conf_demo",
+          "rule_type": "value_constraint",
+          "category": "Rooms",
+          "parameter": "Comments",
+          "requirement": "matches_regex",
+          "pattern": ".*",
+          "severity_tag": "quality_change",
+          "description": "Demo of confidence < 0.75 → auto-bumped to manual.",
+          "fixability": "auto",
+          "autofill": {"strategy": "none"},
+          "extraction_meta": {
+            "confidence": 0.65,
+            "source_text": "(synthetic — confidence-bump demo)",
+            "source_location": "n/a",
+            "execution_status": "executable"
+          }
+        }
+      ]
+    }
+  ]
+}

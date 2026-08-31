@@ -1,0 +1,27 @@
+scenario: coldopen_door_fire_rating
+target_category: Doors
+rules:
+- id: doors.fire_rating.inherit_canonical
+  parameter: Fire Rating
+  requirement: canonical_format
+  category: Doors
+  severity_tag: rule_violation
+  severity_level: severity_high
+  description: All doors must have a fire rating in the canonical form 'X HR'. When
+    empty, inherit the host wall's fire rating and normalize it to 'X HR'.
+  autofill:
+    strategy: inherit_then_normalize
+    normalize_kind: duration
+    normalize_format: '{h} HR'
+    host_param: Fire Rating
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: auto
+  remediation:
+    action: set_parameter
+    new_value_strategy: inferred
+    target: auto
+    llm_safety_critical: false
+  requires_human: false
+geometry_rules: []

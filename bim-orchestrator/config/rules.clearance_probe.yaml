@@ -1,0 +1,84 @@
+# Live probe ruleset — the three clearance fixes of v1.7-R11/R12/R13 have
+# never run against a real Revit model. No config ships a geometry rule, so
+# the nightly could not have covered them either. Written 2026-08-03 to be
+# run against the OPEN R27_Snowdon Towers model, dry-run, read-only.
+#
+# Each rule exists to make ONE fix produce a visible verdict:
+#
+#   probe.lights.ceiling_gap_max  — H-01. `clearance_max` was a dead check:
+#     the comparison was inverted, so it flagged the compliant pairs and
+#     never saw a violation. A light fixture must hang within 300 mm of a
+#     ceiling; Snowdon has 514 fixtures and 78 ceilings, so both verdicts
+#     should be reachable and neither should be universal.
+#
+#   probe.doors.column_clear_100 / _500 — R12. Two horizontal rules on the
+#     SAME (category, reference, direction) triple, at thresholds 5x apart.
+#     They batch together. Before the fix the pair shared one 500 mm call and
+#     `_clearance_actual_mm` read the missing `clearanceActualMm` as 0.0, so
+#     `0.0 < threshold` was true for every row and the 100 mm rule was handed
+#     all the 100-500 mm pairs as violations. If the fix holds, the 100 mm
+#     rule must report a STRICT SUBSET of the 500 mm rule's hits.
+#
+#   probe.furniture.hard_clash — the other half of the same expression, and
+#     the severity call of 2026-08-02. threshold 0 made `0.0 < 0.0` false and
+#     dropped every real hit; the ones that now appear must be severity_high
+#     and say the elements intersect, NOT severity_low from the
+#     threshold<=0 branch of the old fraction scale.
+#
+# view_id 2248381 = "3D (Shaded) Uncropped". Required for the axis=Z raycast:
+# without it the addin uses the active view, which is currently a floor plan
+# and would return nothing.
+scenario: clearance_probe
+target_category: [Lighting Fixtures, Doors, Furniture]
+rules: []
+geometry_rules:
+  - id: probe.lights.ceiling_gap_max
+    category: Lighting Fixtures
+    check_type: clearance_max
+    description: >-
+      A lighting fixture must be mounted within 300 mm of the ceiling above
+      it. Probe for H-01: before the fix this check flagged the fixtures that
+      PASSED and never reported one that failed.
+    threshold_mm: 300
+    clearance_direction: above
+    reference_category: Ceilings
+    reference_source: same_model
+    view_id: 2248381
+    severity_tag: geometric_violation
+
+  - id: probe.doors.column_clear_100
+    category: Doors
+    check_type: clearance_min
+    description: >-
+      A door leaf must keep 100 mm clear of any column. Batches with the
+      500 mm rule below; its hits must be a strict subset of that rule's.
+    threshold_mm: 100
+    clearance_direction: horizontal
+    reference_category: Columns
+    reference_source: same_model
+    severity_tag: geometric_violation
+
+  - id: probe.doors.column_clear_500
+    category: Doors
+    check_type: clearance_min
+    description: >-
+      The wide half of the batching pair — same category, same reference,
+      same direction, 5x the threshold.
+    threshold_mm: 500
+    clearance_direction: horizontal
+    reference_category: Columns
+    reference_source: same_model
+    severity_tag: geometric_violation
+
+  - id: probe.furniture.hard_clash
+    category: Furniture
+    check_type: clearance_min
+    description: >-
+      Furniture must not intersect a wall. threshold 0 is the addin's own
+      hard-clash boundary; every hit here is a real intersection and must be
+      graded severity_high.
+    threshold_mm: 0
+    clearance_direction: horizontal
+    reference_category: Walls
+    reference_source: same_model
+    severity_tag: geometric_violation

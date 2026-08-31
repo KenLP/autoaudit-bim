@@ -1,0 +1,117 @@
+=== DEMO MODE — "Demo Villa" (simulated model) ===
+Reasoning is live (rules engine · QC · DesignAgent · trust pipeline · verification report).
+Data is staged (mock Revit + Forma clients — zero Revit, zero ACC, zero API key, zero network).
+
+{"path": "<ROOT>/config/ost_catalog.yaml", "entries": 63, "aecdm_null": 2, "event": "ost_catalog.loaded", "level": "info", "timestamp": "<TS>"}
+{"run_id": "run-<ID>", "mode": "run-revit", "folder": "<ROOT>/runs/run-<ID>", "event": "run_recorder.started", "level": "info", "timestamp": "<TS>"}
+{"backend": "revit", "scenario": "demo_villa", "spec_count": 2, "categories": ["Doors", "Rooms"], "follow_host_for": ["Doors"], "dropped": [], "event": "query_specs.derived", "level": "info", "timestamp": "<TS>"}
+{"path": "<ROOT>/config/param_catalog.2027.yaml", "revit_version": "2027", "categories": 18, "params": 302, "event": "param_catalog.loaded", "level": "info", "timestamp": "<TS>"}
+{"chain": "qc \u2192 route", "diagnostic_on_exit": false, "event": "graph.phase2_chain", "level": "info", "timestamp": "<TS>"}
+{"iteration": 0, "categories": ["Doors", "Rooms"], "backend_categories": ["OST_Doors", "OST_Rooms"], "follow_host_for": ["Doors"], "fetch_concurrency": 4, "event": "revit_query.start", "level": "info", "timestamp": "<TS>"}
+{"category_label": "Doors", "backend_category": "OST_Doors", "listing_size": 12, "hydrated": 12, "failed": 0, "follow_host": true, "elapsed_ms": <MS>, "event": "revit_query.category_done", "level": "info", "timestamp": "<TS>"}
+{"category_label": "Rooms", "backend_category": "OST_Rooms", "listing_size": 8, "hydrated": 8, "failed": 0, "follow_host": false, "elapsed_ms": <MS>, "event": "revit_query.category_done", "level": "info", "timestamp": "<TS>"}
+{"count": 20, "per_category": {"Doors": 12, "Rooms": 8}, "type_cache_size": 5, "instance_cache_size": 21, "elapsed_ms": <MS>, "elements_per_sec": <RATE>, "type_cache_hits": 19, "type_cache_misses": 5, "type_hit_ratio": 0.792, "instance_cache_hits": 11, "instance_hit_ratio": 0.344, "event": "revit_query.done", "level": "info", "timestamp": "<TS>"}
+{"iteration": 0, "element_count": 20, "rule_count": 5, "event": "qc_agent.start", "level": "info", "timestamp": "<TS>"}
+{"findings": 6, "manual_review": 0, "missing_data": 3, "compliant": 43, "total": 52, "trace_records": 52, "high": 3, "medium": 2, "low": 1, "event": "qc_agent.done", "level": "info", "timestamp": "<TS>"}
+{"findings": 6, "event": "route.first_iteration", "level": "info", "timestamp": "<TS>"}
+{"total_findings": 6, "missing_data_items": 3, "missing_to_path_b": 3, "missing_to_path_a": 0, "candidates_after_filter": 7, "path_a_full": 1, "path_b_full": 6, "path_a_selected": 1, "path_b_selected": 6, "rule_filter": null, "dry_run_only": false, "path_b_available": true, "event": "design_agent.start", "level": "info", "timestamp": "<TS>"}
+{"path_a": 1, "path_b": 6, "event": "design_agent.partition", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.doors.fire_rating", "element_id": "703", "parameter": "Fire Rating", "new_value": "2 HR", "changes": {"before": "120 min", "after": "2 HR"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_high", "deterministic": false, "autofill_strategy": "inherit_then_normalize", "value_strategy": "inferred", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.doors.mark_naming", "element_id": "705", "parameter": "Mark", "new_value": "D_105", "changes": {"before": "D 105", "after": "D_105"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "auto", "severity": "severity_low", "deterministic": false, "autofill_strategy": "normalize", "value_strategy": "inferred", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"parameter": "Number", "category": "Rooms", "count": 4, "source": "rooms", "event": "design_agent.siblings_cached", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.rooms.number_unique", "element_id": "402", "parameter": "Number", "new_value": "101A", "changes": {"before": "101", "after": "101A"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_medium", "deterministic": false, "autofill_strategy": "none", "value_strategy": "next_available", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.rooms.number_unique", "element_id": "403", "parameter": "Number", "new_value": "101B", "changes": {"before": "101", "after": "101B"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_medium", "deterministic": false, "autofill_strategy": "none", "value_strategy": "next_available", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.doors.fire_rating", "element_id": "701", "parameter": "Fire Rating", "new_value": "2 HR", "changes": {"before": "", "after": "2 HR"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_high", "deterministic": false, "autofill_strategy": "inherit_then_normalize", "value_strategy": "inferred", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.rooms.department_required", "element_id": "401", "parameter": "Department", "new_value": "General", "changes": {"before": null, "after": "General"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "auto", "severity": "severity_low", "deterministic": true, "autofill_strategy": "compose_template", "value_strategy": "inferred", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"writes": 2, "steps": 2, "committed": 2, "event": "design_agent.revit.batch_executed", "level": "info", "timestamp": "<TS>"}
+{"subtype_id": "subtype-quality", "subtype_title": "Quality", "type_title": "Quality", "active_count": 2, "total_count": 4, "event": "design_agent.subtype_discovered", "level": "info", "timestamp": "<TS>"}
+{"issue_id": "issue-mock-0001", "display_id": 1001, "fixes": 2, "event": "design_agent.proposal_issue_created", "level": "info", "timestamp": "<TS>"}
+{"issue_id": "issue-mock-0002", "display_id": 1002, "fixes": 2, "event": "design_agent.proposal_issue_created", "level": "info", "timestamp": "<TS>"}
+{"groups": 1, "kept": 1, "dropped": 0, "geometry_findings": 0, "event": "design_agent.path_a_grouped", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.doors.width_min", "bucket": "non_compliant", "elements": 1, "severity": "severity_high", "decision": "auto", "event": "design_agent.rule_group_preview", "level": "info", "timestamp": "<TS>"}
+{"issue_id": "issue-mock-0003", "display_id": 1003, "rule": "demo.doors.width_min", "elements": 1, "event": "design_agent.rule_group_executed", "level": "info", "timestamp": "<TS>"}
+{"proposed": 7, "executed": 3, "event": "design_agent.done", "level": "info", "timestamp": "<TS>"}
+{"iteration": 1, "prev_finding_count": 6, "prev_fingerprint_size": 6, "event": "bump.next_iteration", "level": "info", "timestamp": "<TS>"}
+{"path": "<ROOT>/checkpoints/<DATE>/iteration_00_<TS>.json", "keys": ["project_id", "iteration", "max_iterations", "findings", "proposed_fixes", "outcomes_summary", "manual_review_items", "missing_data_items", "geometry_findings", "fix_write_log", "query_coverage", "status", "error"], "event": "checkpoint.written", "level": "info", "timestamp": "<TS>"}
+{"iteration": 1, "categories": ["Doors", "Rooms"], "backend_categories": ["OST_Doors", "OST_Rooms"], "follow_host_for": ["Doors"], "fetch_concurrency": 4, "event": "revit_query.start", "level": "info", "timestamp": "<TS>"}
+{"category_label": "Doors", "backend_category": "OST_Doors", "listing_size": 12, "hydrated": 12, "failed": 0, "follow_host": true, "elapsed_ms": <MS>, "event": "revit_query.category_done", "level": "info", "timestamp": "<TS>"}
+{"category_label": "Rooms", "backend_category": "OST_Rooms", "listing_size": 8, "hydrated": 8, "failed": 0, "follow_host": false, "elapsed_ms": <MS>, "event": "revit_query.category_done", "level": "info", "timestamp": "<TS>"}
+{"count": 20, "per_category": {"Doors": 12, "Rooms": 8}, "type_cache_size": 5, "instance_cache_size": 21, "elapsed_ms": <MS>, "elements_per_sec": <RATE>, "type_cache_hits": 19, "type_cache_misses": 5, "type_hit_ratio": 0.792, "instance_cache_hits": 11, "instance_hit_ratio": 0.344, "event": "revit_query.done", "level": "info", "timestamp": "<TS>"}
+{"iteration": 1, "element_count": 20, "rule_count": 5, "event": "qc_agent.start", "level": "info", "timestamp": "<TS>"}
+{"findings": 5, "manual_review": 0, "missing_data": 2, "compliant": 45, "total": 52, "trace_records": 52, "high": 3, "medium": 2, "low": 0, "event": "qc_agent.done", "level": "info", "timestamp": "<TS>"}
+{"findings": 5, "previous": 6, "delta": 1, "fingerprint_changed": true, "event": "route.continue", "level": "info", "timestamp": "<TS>"}
+{"total_findings": 5, "missing_data_items": 2, "missing_to_path_b": 2, "missing_to_path_a": 0, "candidates_after_filter": 5, "path_a_full": 1, "path_b_full": 4, "path_a_selected": 1, "path_b_selected": 4, "rule_filter": null, "dry_run_only": false, "path_b_available": true, "event": "design_agent.start", "level": "info", "timestamp": "<TS>"}
+{"path_a": 1, "path_b": 4, "event": "design_agent.partition", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.doors.fire_rating", "element_id": "703", "parameter": "Fire Rating", "new_value": "2 HR", "changes": {"before": "120 min", "after": "2 HR"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_high", "deterministic": false, "autofill_strategy": "inherit_then_normalize", "value_strategy": "inferred", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"parameter": "Number", "category": "Rooms", "count": 4, "source": "rooms", "event": "design_agent.siblings_cached", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.rooms.number_unique", "element_id": "402", "parameter": "Number", "new_value": "101A", "changes": {"before": "101", "after": "101A"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_medium", "deterministic": false, "autofill_strategy": "none", "value_strategy": "next_available", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.rooms.number_unique", "element_id": "403", "parameter": "Number", "new_value": "101B", "changes": {"before": "101", "after": "101B"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_medium", "deterministic": false, "autofill_strategy": "none", "value_strategy": "next_available", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"rule": "demo.doors.fire_rating", "element_id": "701", "parameter": "Fire Rating", "new_value": "2 HR", "changes": {"before": "", "after": "2 HR"}, "event": "design_agent.revit.preview", "level": "info", "timestamp": "<TS>"}
+{"decision": "approve", "severity": "severity_high", "deterministic": false, "autofill_strategy": "inherit_then_normalize", "value_strategy": "inferred", "llm_proposed": false, "propose_only": false, "event": "design_agent.revit.autonomy", "level": "info", "timestamp": "<TS>"}
+{"reason": "autonomy=approve", "event": "design_agent.revit.skipped_execute", "level": "info", "timestamp": "<TS>"}
+{"rule_id": "demo.doors.fire_rating", "fingerprint": "127cc181", "issue_id": "issue-mock-0001", "note": "same rule+write-set already proposed this run", "event": "design.proposal_skipped_duplicate", "level": "info", "timestamp": "<TS>"}
+{"rule_id": "demo.rooms.number_unique", "fingerprint": "2334aa6f", "issue_id": "issue-mock-0002", "note": "same rule+write-set already proposed this run", "event": "design.proposal_skipped_duplicate", "level": "info", "timestamp": "<TS>"}
+{"groups": 1, "kept": 1, "dropped": 0, "geometry_findings": 0, "event": "design_agent.path_a_grouped", "level": "info", "timestamp": "<TS>"}
+{"rule_id": "demo.doors.width_min", "bucket": "non_compliant", "elements": 1, "note": "same rule+bucket+element-set already proposed this run", "event": "design.issue_skipped_duplicate", "level": "info", "timestamp": "<TS>"}
+{"proposed": 12, "executed": 3, "event": "design_agent.done", "level": "info", "timestamp": "<TS>"}
+{"iteration": 2, "prev_finding_count": 5, "prev_fingerprint_size": 5, "event": "bump.next_iteration", "level": "info", "timestamp": "<TS>"}
+{"path": "<ROOT>/checkpoints/<DATE>/iteration_01_<TS>.json", "keys": ["project_id", "iteration", "max_iterations", "findings", "proposed_fixes", "prev_finding_count", "prev_findings_fingerprint", "outcomes_summary", "manual_review_items", "missing_data_items", "geometry_findings", "iteration_history", "fix_write_log", "query_coverage", "status", "error"], "event": "checkpoint.written", "level": "info", "timestamp": "<TS>"}
+{"iteration": 2, "categories": ["Doors", "Rooms"], "backend_categories": ["OST_Doors", "OST_Rooms"], "follow_host_for": ["Doors"], "fetch_concurrency": 4, "event": "revit_query.start", "level": "info", "timestamp": "<TS>"}
+{"category_label": "Doors", "backend_category": "OST_Doors", "listing_size": 12, "hydrated": 12, "failed": 0, "follow_host": true, "elapsed_ms": <MS>, "event": "revit_query.category_done", "level": "info", "timestamp": "<TS>"}
+{"category_label": "Rooms", "backend_category": "OST_Rooms", "listing_size": 8, "hydrated": 8, "failed": 0, "follow_host": false, "elapsed_ms": <MS>, "event": "revit_query.category_done", "level": "info", "timestamp": "<TS>"}
+{"count": 20, "per_category": {"Doors": 12, "Rooms": 8}, "type_cache_size": 5, "instance_cache_size": 21, "elapsed_ms": <MS>, "elements_per_sec": <RATE>, "type_cache_hits": 19, "type_cache_misses": 5, "type_hit_ratio": 0.792, "instance_cache_hits": 11, "instance_hit_ratio": 0.344, "event": "revit_query.done", "level": "info", "timestamp": "<TS>"}
+{"iteration": 2, "element_count": 20, "rule_count": 5, "event": "qc_agent.start", "level": "info", "timestamp": "<TS>"}
+{"findings": 5, "manual_review": 0, "missing_data": 2, "compliant": 45, "total": 52, "trace_records": 52, "high": 3, "medium": 2, "low": 0, "event": "qc_agent.done", "level": "info", "timestamp": "<TS>"}
+{"reason": "fingerprint_unchanged", "current": 5, "previous": 5, "event": "route.converged", "level": "info", "timestamp": "<TS>"}
+
+=== Compliance outcomes ===
+  Compliant:          45 / 52
+  Non-Compliant:       5
+  Manual Review:       0
+  Missing Data:        2
+
+=== Run-Revit summary [EXECUTE] ===
+Final status:       converged
+Iterations:         2
+
+--- Elements → ACC Issues ---
+  Detected:            5 non-compliant + 2 missing-data elements
+  ACC Issues created:  3  (1 issue per rule)
+    ·   2 auto-fix proposal(s)  → review/approve in the Approvals tab
+    ·   1 manual issue(s)        → Path A (someone fixes by hand)
+  Revit auto-writes (no issue):  2 element(s)
+
+Revit parameter writes:
+  - element 705: Mark → 'D_105'
+  - element 401: Department → 'General'
+
+Manual ACC Issues (Path A) created:
+  - #1003 [AutoAudit] Doors -- demo.doors.width_min (1 non-compliant)
+
+Auto-fix proposal issues (approve-gated): 2 — open the Approvals tab to apply.
+Manual-review queue (0): <ROOT>/review_queue.md
+Data-quality report (2): <ROOT>/data_quality_report.md
+{"run_id": "run-<ID>", "status": "converged", "events": 76, "event": "run_recorder.finished", "level": "info", "timestamp": "<TS>"}
+Run folder:    <ROOT>/runs/run-<ID>
+
+=== Next steps ===
+1. Run folder:              <ROOT>/runs/run-<ID>
+2. Open the verification report: <ROOT>/runs/run-<ID>/verification_report.md
+3. Try it yourself: edit config/rules.demo.yaml (e.g. the door-width threshold) and re-run `bim-orchestrator --demo` to see the verdict change.
+4. Ready for the real thing? Point --run-revit at a live Revit session (see README — "Try it in 5 minutes").

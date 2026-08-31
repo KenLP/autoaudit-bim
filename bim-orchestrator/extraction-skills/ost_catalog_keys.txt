@@ -1,0 +1,76 @@
+# OST Catalog category keys (v1.3, live-verified against AECDM + Revit 2027)
+# Format: key | display | discipline
+# Use the `key` value (left column) when emitting category_key in extracted rules.
+
+
+## Architecture
+
+walls                          | Walls                          | architecture
+doors                          | Doors                          | architecture
+windows                        | Windows                        | architecture
+floors                         | Floors                         | architecture
+ceilings                       | Ceilings                       | architecture
+roofs                          | Roofs                          | architecture
+rooms                          | Rooms                          | architecture
+areas                          | Areas                          | architecture
+stairs                         | Stairs                         | architecture
+stairs-runs                    | Stair Runs                     | architecture
+stairs-landings                | Stair Landings                 | architecture
+stairs-railings                | Railings                       | architecture
+ramps                          | Ramps                          | architecture
+curtain-panels                 | Curtain Panels                 | architecture
+curtain-mullions               | Curtain Wall Mullions          | architecture
+curtain-systems                | Curtain Systems                | architecture
+furniture                      | Furniture                      | architecture
+furniture-systems              | Furniture Systems              | architecture
+casework                       | Casework                       | architecture
+specialty-equipment            | Specialty Equipment            | architecture
+generic-models                 | Generic Models                 | architecture
+planting                       | Planting                       | architecture
+sheets                         | Sheets                         | architecture
+
+## Structure
+
+structural-columns             | Structural Columns             | structure
+structural-framing             | Structural Framing             | structure
+structural-foundation          | Structural Foundations         | structure
+structural-truss               | Structural Trusses             | structure
+structural-stiffener           | Structural Stiffeners          | structure
+structural-connections         | Structural Connections         | structure
+structural-rebar               | Structural Rebar               | structure
+rebar-area                     | Area Reinforcement             | structure
+rebar-path                     | Path Reinforcement             | structure
+fabric-areas                   | Fabric Areas                   | structure
+fabric-reinforcement           | Fabric Reinforcement           | structure
+
+## Mep
+
+spaces                         | Spaces                         | mep
+mechanical-equipment           | Mechanical Equipment           | mep
+ducts                          | Ducts                          | mep
+duct-fittings                  | Duct Fittings                  | mep
+duct-accessories               | Duct Accessories               | mep
+air-terminals                  | Air Terminals                  | mep
+duct-insulations               | Duct Insulations               | mep
+flex-ducts                     | Flex Ducts                     | mep
+pipes                          | Pipes                          | mep
+pipe-fittings                  | Pipe Fittings                  | mep
+pipe-accessories               | Pipe Accessories               | mep
+pipe-insulations               | Pipe Insulations               | mep
+flex-pipes                     | Flex Pipes                     | mep
+plumbing-fixtures              | Plumbing Fixtures              | mep
+sprinklers                     | Sprinklers                     | mep
+electrical-equipment           | Electrical Equipment           | mep
+electrical-fixtures            | Electrical Fixtures            | mep
+lighting-fixtures              | Lighting Fixtures              | mep
+lighting-devices               | Lighting Devices               | mep
+data-devices                   | Data Devices                   | mep
+communication-devices          | Communication Devices          | mep
+fire-alarm-devices             | Fire Alarm Devices             | mep
+security-devices               | Security Devices               | mep
+nurse-call-devices             | Nurse Call Devices             | mep
+cable-tray                     | Cable Trays                    | mep
+cable-tray-fittings            | Cable Tray Fittings            | mep
+conduit                        | Conduits                       | mep
+conduit-fittings               | Conduit Fittings               | mep
+wires                          | Wires                          | mep

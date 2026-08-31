@@ -1,0 +1,137 @@
+# Room Compliance rules (Phase 2 Week 6 — BEP §1 Room and Space Requirements)
+#
+# Pivots from Phase 1's parameter-completeness scenario onto Revit-side room
+# geometry + classification. Demonstrates:
+#   * Multi-target dispatch via `fixability` (manual → ACC Issue, auto → Revit
+#     parameter write).
+#   * Hard citation policy with `source_filter: [BEP.txt]` so every finding
+#     cites a section from the synthetic BEP fixture.
+#
+# Snowdon Towers fire pattern (re-run via `--check-revit` when wired):
+#   * room.area.residential_min  →  1 (Bedroom 999 synthetic — Snowdon real
+#     residentials are 50–110 m² and all pass)
+#   * room.area.other_min        →  ~5  (Elevators E1/E2, Machine RM P02/P03,
+#                                        Storage P04)
+#   * room.height.clear_min      →  0  (all heights ≥ 3.05 m)
+#   * room.number.unique         →  0  (Snowdon numbers all unique by default;
+#                                        synthetic 999 collides with 203 for tests)
+#   * room.department.required   →  54 (all departments empty — bulk baseline)
+
+scenario: bep_room_compliance
+target_category: Rooms
+
+rules:
+  # ── §1.1 Residential floor area ≥ 10 m² (manual, geometric) ────────────
+  - id: room.area.residential_min
+    parameter: areaMetric
+    requirement: numeric_min_conditional
+    threshold: 10.0
+    when_param: Occupancy
+    when_pattern: "^Residential"
+    severity_tag: geometric_violation
+    description: |
+      Residential rooms must have a floor area of at least 10 m².
+      Geometric violation — humans must rework walls; agent flags only.
+    fixability: manual
+    remediation:
+      action: create_acc_issue
+      # Note (Phase 2 W6 D4): RevitMCPAddin's C# HTTP body reader treats the
+      # request as Latin-1, so UTF-8 multi-byte chars like em-dash (U+2014)
+      # and section sign (U+00A7) come back mojibake'd inside Revit. We keep
+      # templates ASCII-only until the addin is patched — tracked separately.
+      comments_template: "BEP Sec.1.1 non-compliant: area {value} m2 < 10 m2 minimum"
+    citation:
+      mode: hard
+      source_filter: [BEP.txt]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null
+
+  # ── §1.2 Other occupied rooms floor area ≥ 9 m² (manual, geometric) ────
+  - id: room.area.other_min
+    parameter: areaMetric
+    requirement: numeric_min
+    threshold: 9.0
+    severity_tag: geometric_violation
+    description: |
+      All occupied rooms must have a floor area of at least 9 m². Mechanical
+      and circulation spaces are exempt at the human-review stage.
+    fixability: manual
+    remediation:
+      action: create_acc_issue
+      comments_template: "BEP Sec.1.2 non-compliant: area {value} m2 < 9 m2 minimum"
+    citation:
+      mode: hard
+      source_filter: [BEP.txt]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null
+
+  # ── §1.4 Clear height ≥ 2.6 m (manual, geometric) ──────────────────────
+  - id: room.height.clear_min
+    parameter: Unbounded Height (m)
+    requirement: numeric_min
+    threshold: 2.6
+    severity_tag: geometric_violation
+    description: |
+      Every occupied room must have a clear height of at least 2.6 m measured
+      from finished floor to the underside of the ceiling.
+    fixability: manual
+    remediation:
+      action: create_acc_issue
+      comments_template: "BEP Sec.1.4 non-compliant: clear height {value} m < 2.6 m"
+    citation:
+      mode: hard
+      source_filter: [BEP.txt]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null
+
+  # ── §1.5 Unique room numbers (auto, parameter rewrite) ─────────────────
+  - id: room.number.unique
+    parameter: Number
+    requirement: unique_in_set
+    severity_tag: duplicate_identifier
+    description: |
+      Room numbers must be unique across the project. Duplicates are
+      programmatically renumberable — agent proposes the next-available
+      value and tags Comments with the old value for audit.
+    fixability: auto
+    remediation:
+      action: set_parameter
+      target_parameter: Number
+      new_value_strategy: next_available
+      comments_template: "Renamed Number from '{old_value}' -- BEP Sec.1.5 duplicate flag"
+    citation:
+      mode: hard
+      source_filter: [BEP.txt]
+      on_missing: warn
+    autofill:
+      strategy: none
+      fallback: null
+
+  # ── §1.7 Department required (auto, parameter rewrite via inference) ───
+  - id: room.department.required
+    parameter: Department
+    requirement: present_and_nonempty
+    severity_tag: missing_required_param
+    description: |
+      Every room must carry a non-empty Department value. Agent infers from
+      Occupancy or from the room name (`Studio Unit` → `Residential`,
+      `Storage` → `Services`, etc.) and tags Comments with the source.
+    fixability: auto
+    remediation:
+      action: set_parameter
+      target_parameter: Department
+      new_value_strategy: inferred
+      comments_template: "Auto-filled Department='{new_value}' -- BEP Sec.1.7"
+    citation:
+      mode: hard
+      source_filter: [BEP.txt]
+      on_missing: warn
+    autofill:
+      strategy: infer_from_room_name
+      fallback: General

@@ -1,0 +1,56 @@
+# IBC §716 — fire door assembly rating required by the wall it is in.
+#
+# Table-driven relational check: the REQUIRED door fire-protection rating is a code
+# function of the host wall's USE *and* its fire-resistance rating (IBC 2018 Table
+# 716.1(2)) — NOT equal to the wall rating. A rule cites this table (`lookup: ibc716`)
+# on a `relation_compare` (`compare_kind: fire_rating`, `operator: ">="`): QC reads
+# the two key params from the host wall, looks up the required door rating here, and
+# compares the door's actual Fire Rating against it.
+#
+# 2-KEY: [wall fire-resistance rating] × [wall fire USE].
+#   key 1 `host.Fire Rating`   — the wall's rating (built-in, type param); matched by
+#                                duration so "1 HR" == "60 min".
+#   key 2 `host.Fire Function` — the wall's USE classification (a project shared
+#                                param: Corridor / Fire Partition / Fire Barrier /
+#                                Shaft / Exit Enclosure). Revit has no native "wall
+#                                use", so populate this on the walls; when ABSENT the
+#                                value is None → only the "*" rows match → the stricter
+#                                fire-BARRIER default applies (safe). "*" = wildcard.
+#
+# This is what the 1-key POC could not do: a 1-hr CORRIDOR needs only a 20-min door,
+# while a 1-hr fire BARRIER needs 60 min — same rating, different required door.
+#
+# Key-1 value semantics (B-4, review round 7, 2026-08-16):
+#   * an EXPLICIT not-rated sentinel ("NR", "0 hr") → §716 imposes no requirement →
+#     the door is exempt (compliant).
+#   * BLANK (not recorded) → manual review, NOT exempt — "chưa ghi nhận" is not
+#     "không có yêu cầu"; most real wall types ship blank.
+#   * a rating not in any row, or unreadable ("2" without a unit) → manual review.
+#
+# ROWS AUDITED against IBC 2018 Table 716.1(2) — BIM-domain review 2026-08-16 (B-5):
+#   * "1 HR × Fire Partition" was 20 min — that is the CORRIDOR-wall allowance;
+#     a non-corridor 1-hr fire partition (e.g. a dwelling-unit separation) requires
+#     a ¾-hr (45 min) door. Fixed to 45 min; the Corridor row keeps 20 min.
+#   * "0.75 HR" wall row removed — not a wall rating that appears in the table.
+#   * "4 HR" row added — the heaviest fire wall (previously fell to manual review).
+
+name: ibc716
+description: IBC 2018 Table 716.1(2) — fire door rating required by host wall use × rating.
+
+keys:
+  - { param: host.Fire Rating,   dimension: fire_rating }
+  - { param: host.Fire Function, dimension: string }
+
+rows:
+  # 1-hour walls — USE matters: corridor/smoke-barrier walls get a lighter door.
+  - { when: ["1 HR", "Corridor"],        require: "20 min" }   # corridor walls: 1/3-hr door
+  - { when: ["1 HR", "Smoke Barrier"],   require: "20 min" }
+  - { when: ["1 HR", "Fire Partition"],  require: "45 min" }   # non-corridor partitions: 3/4-hr door
+  - { when: ["1 HR", "*"],               require: "60 min" }   # fire barrier / shaft / exit (default)
+  # sub-1-hour walls (0.5-hr fire partitions / exterior walls)
+  - { when: ["0.5 HR", "*"],             require: "20 min" }   # 1/3-hr door
+  # ≥ 1.5-hour — required door is the same regardless of use
+  - { when: ["1.5 HR", "*"],             require: "90 min" }
+  - { when: ["2 HR", "*"],               require: "90 min" }   # shafts, exit enclosures, 2-hr barriers: 1.5-hr door
+  - { when: ["3 HR", "*"],               require: "3 HR" }     # fire walls
+  - { when: ["4 HR", "*"],               require: "3 HR" }     # heaviest fire walls still take a 3-hr door

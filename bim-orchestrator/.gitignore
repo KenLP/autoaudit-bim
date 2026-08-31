@@ -1,0 +1,73 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.env
+.env.local
+
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Runtime artifacts
+checkpoints/
+audit-logs/
+recordings/
+*.sqlite
+*.sqlite-journal
+
+# RAG / vector store (Phase 2)
+chroma_db/
+data/chroma/
+.chroma/
+*.bin
+
+# CLI side-reports dumped at the package root by --check / --apply.
+# Anchored: a bare name matches at EVERY depth and also swallowed
+# docs/sample-output/, where a committed sample run lives.
+/findings.json
+/review_queue.md
+/data_quality_report.md
+
+# Machine-local satellite paths (Phase 3 audit axes) — the .example is committed
+config/audit_services.yaml
+
+# Extraction workflow scratch files — JSON from Claude Desktop tests
+# (the committed examples live under extraction-skills/examples/)
+*_rules.json
+*_height_rules.json
+ibc_*_egress_*.json
+
+# Extraction-generated cleaned JSON (intermediate, not for VCS)
+extraction-skills/cleaned/
+
+# Vendored MCP server binaries — fetched from GitHub Releases via
+# scripts/fetch-forma-mcp.ps1, not committed. The .env.example template
+# under vendor/ stays tracked; the real .env is ignored by the global rule above.
+vendor/**/*.exe
+vendor/**/forma-mcp-linux
+# The .sha256 sidecar is written NEXT TO the exe by the same fetch script
+# (fetch-forma-mcp.ps1 §4) as a per-machine record of what --doctor may
+# re-check. It is not a pin: the expected hash comes from the GitHub release
+# API or -ExpectedSha256, never from this file. Committing it would freeze one
+# machine's download into the repo without buying any verification.
+vendor/**/*.exe.sha256
+
+# PRIVATE advanced rule library — NOT part of the public AU share. Self-contained
+# packs (rules + their reference/lookup data). The engine loads them via the Setup
+# "📚 Thư viện nâng cao" toggle or `--rules rule-library/...`. Back up to a private
+# repo if you want version control.
+rule-library/
+rules_lint.json

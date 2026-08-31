@@ -1,0 +1,83 @@
+#!/bin/sh
+# Block a commit that deletes files in bulk.
+#
+# Why this exists: `runs/`, `checkpoints/` and `_runs_archive_*` are listed in
+# .gitignore, so everyone treats them as scratch you can `rm -rf` freely. But
+# they have been force-added to the repo before, and the moment that happens
+# .gitignore stops telling you anything about whether a file is tracked. A
+# routine "clean up the demo artifacts" then stages 1000+ deletions, and a
+# broad `git add -A` turns it into a commit.
+#
+# That exact sequence happened on 2026-08-27: 1048 tracked files were removed by
+# an artifact-cleanup `rm -rf` while another session had them committed. It was
+# caught before staging, so nothing was lost. This hook is the net for the time
+# it is not caught.
+#
+# The hook fires at COMMIT time, so it cannot stop the `rm -rf` itself. Run
+# `git status` before deleting anything inside the repo — that is the real
+# defence; this only stops the damage becoming permanent.
+#
+# Intentional bulk deletion: `git commit --no-verify`.
+
+# Two things this file does that look fussy and are not:
+#
+#   trap '' PIPE   — a hook that reports on stdout dies of SIGPIPE the moment
+#                    anything closes its output early. `git commit | head -20`
+#                    is enough. The hook then never reaches `exit 1`, git sees a
+#                    signal death as success, and the commit lands. That is not
+#                    hypothetical: it is how a test commit deleting 196 tracked
+#                    files got through the guard meant to stop exactly that.
+#                    Ignoring SIGPIPE makes the write fail harmlessly and lets
+#                    the script reach its exit.
+#   exec >&2       — diagnostics belong on stderr anyway, and stderr is far less
+#                    likely to be the thing being piped into `head`.
+#
+# No `set -e` here on purpose. Under it, a plain `[ x -gt y ] && ...` line that
+# evaluates FALSE ends the script with a non-zero status -- which for a hook
+# means "block the commit". The first version of this file did exactly that and
+# rejected a 5-file deletion. A guard that fires when it should not is worse
+# than no guard: people learn to pass --no-verify by reflex.
+
+trap '' PIPE
+
+deleted=$(git diff --cached --diff-filter=D --name-only)
+if [ -z "$deleted" ]; then
+  exit 0
+fi
+
+total=$(printf '%s\n' "$deleted" | wc -l | tr -d ' ')
+artifacts=$(printf '%s\n' "$deleted" \
+    | grep -cE '(^|/)(runs|checkpoints|_runs_archive[^/]*)/' || true)
+
+ARTIFACT_LIMIT=10
+TOTAL_LIMIT=40
+
+if [ "$artifacts" -le "$ARTIFACT_LIMIT" ] && [ "$total" -le "$TOTAL_LIMIT" ]; then
+  exit 0
+fi
+
+exec >&2
+
+echo ""
+echo "  ✗ pre-commit: this commit deletes files in bulk."
+echo ""
+echo "      $total file(s) staged for deletion"
+if [ "$artifacts" -gt 0 ]; then
+  echo "      $artifacts of them under runs/ , checkpoints/ or _runs_archive_*"
+fi
+echo ""
+echo "    Those directories are in .gitignore, which makes them LOOK like scratch"
+echo "    you can delete freely. They have been force-added before. When that is"
+echo "    true, .gitignore tells you nothing about what is tracked, and an"
+echo "    artifact cleanup silently removes another session's committed data."
+echo ""
+echo "    First 10:"
+printf '%s\n' "$deleted" | head -10 | sed 's/^/        /'
+echo ""
+echo "    Recover the working tree with:"
+echo "        git checkout -- <path>"
+echo ""
+echo "    If this deletion is deliberate:"
+echo "        git commit --no-verify"
+echo ""
+exit 1

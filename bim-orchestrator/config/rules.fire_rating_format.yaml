@@ -1,0 +1,29 @@
+scenario: fire_rating_format
+target_category: Doors
+# v1.4-K5 approve-gated demo: Fire Rating values like "180 MIN" / "2 HR" are
+# valid ratings in a non-canonical FORMAT. The rule flags them non_compliant;
+# the `normalize` autofill computes the equivalent canonical "N-hour"; because
+# Fire Rating is fire-safety (severity_high → autonomy approve) the fix is NOT
+# auto-applied — it becomes ONE ACC proposal issue. A human sets the issue to
+# "In progress"; the ApprovalWatcher then writes the family TYPE (deduped per
+# type) and closes the issue.
+rules:
+- id: doors.fire_rating.format
+  parameter: Fire Rating
+  requirement: matches_regex_if_present   # blank Fire Rating is NOT a format violation
+  pattern: "^(NR|\\d+(\\.\\d+)?-hour)$"
+  category: Doors
+  severity_tag: fire_safety_change      # → severity_high → autonomy: approve
+  description: |
+    Door Fire Rating must be canonical "N-hour" (e.g. "2-hour") or "NR".
+    "180 MIN" / "90 MIN" / "2 HR" are equivalent but mis-formatted → normalize.
+  fixability: auto
+  autofill:
+    strategy: normalize
+    normalize_kind: fire_rating
+  remediation:
+    action: set_parameter
+    target_parameter: Fire Rating
+    new_value_strategy: inferred
+    target: type                        # Fire Rating is a TYPE param
+geometry_rules: []

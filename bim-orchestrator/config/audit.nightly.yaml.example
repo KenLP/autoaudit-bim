@@ -1,0 +1,13 @@
+name: nightly
+rules:
+  - rules.room_compliance.yaml   # profile-dir-relative (audit_profile._resolve_relative)
+axes:
+  lod: { enabled: false }
+  spatial: { enabled: false }
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  propose_only: true             # scheduled runs NEVER write the model
+unattended:
+  enabled: false

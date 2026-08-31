@@ -1,0 +1,12 @@
+name: approved_materials
+description: BEP §3.2 approved furniture material palette (demo reference set)
+case_sensitive: false
+entries:
+  - canonical: "Oak"
+    aliases: ["wood-oak", "white oak"]
+  - canonical: "Steel-Brushed"
+    aliases: ["brushed steel", "steel brushed", "ss-brushed"]
+  - canonical: "Fabric-Grey"
+    aliases: ["grey fabric", "fabric grey", "gray fabric"]
+  - canonical: "Laminate-White"
+    aliases: ["white laminate"]

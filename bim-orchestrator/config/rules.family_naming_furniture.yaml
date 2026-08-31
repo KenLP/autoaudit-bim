@@ -1,0 +1,27 @@
+scenario: family_naming_furniture
+target_category: Furniture
+rules:
+- id: furniture.family_name.naming_convention
+  parameter: Family Name
+  requirement: canonical_format
+  category: Furniture
+  severity_tag: rule_violation
+  severity_level: severity_medium
+  description: Furniture family names must start with 'ADSK_'; if missing, prepend
+    it and normalize separators to underscores.
+  autofill:
+    strategy: normalize
+    normalize_kind: template
+    normalize_format: ADSK_{rest}
+    normalize_source: (?i)(?:adsk[ _-]+)?(?P<rest>.+)
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: auto
+  remediation:
+    action: rename_element
+    new_value_strategy: inferred
+    target: family
+    llm_safety_critical: false
+  requires_human: false
+geometry_rules: []

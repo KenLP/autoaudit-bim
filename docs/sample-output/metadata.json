@@ -1,0 +1,53 @@
+{
+  "run_id": "run-e92510d2",
+  "mode": "run-revit",
+  "started_at": "2026-08-27T13:49:24",
+  "finished_at": "2026-08-27T13:49:24",
+  "duration_seconds": 0.14,
+  "status": "converged",
+  "coverage_status": "ok",
+  "query_coverage": {
+    "targets_requested": [
+      "Doors",
+      "Rooms"
+    ],
+    "categories_resolved": [
+      "Doors",
+      "Rooms"
+    ],
+    "categories_dropped": [],
+    "rule_count": 5
+  },
+  "geometry_coverage_status": null,
+  "geometry_coverage": null,
+  "llm_usage": null,
+  "llm_status": null,
+  "stop_reason": "fingerprint_stable",
+  "iterations": 2,
+  "max_iterations": 4,
+  "project_id": "demo-villa-simulated",
+  "document": {
+    "title": "Demo Villa",
+    "path": null,
+    "is_workshared": false,
+    "is_modified": false,
+    "project_name": "Demo Villa",
+    "project_number": "DEMO-001",
+    "revit_version_name": "Autodesk Revit 2026",
+    "revit_version_number": "2026",
+    "fetched_at": "2026-08-27T06:49:24+00:00 (UTC)"
+  },
+  "outcomes_summary": {
+    "total": 52,
+    "compliant": 45,
+    "non_compliant": 5,
+    "manual_review": 0,
+    "missing_data": 2,
+    "skipped_out_of_scope": 48
+  },
+  "non_compliant_count": 5,
+  "manual_review_count": 0,
+  "missing_data_count": 2,
+  "proposed_fixes_count": 12,
+  "executed_fixes_count": 3
+}

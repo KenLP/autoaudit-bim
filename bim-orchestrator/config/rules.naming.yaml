@@ -1,0 +1,59 @@
+# Naming Convention rules for Rooms (Phase 1 — 2nd MVP scenario)
+#
+# Demonstrates the rule abstraction layer: same Query / QC / Design agents,
+# different rules YAML. Drop in this file via `--rules` and the entire
+# pipeline re-targets without code changes.
+
+scenario: naming_convention
+target_category: Rooms
+
+rules:
+  # Name should not contain digits — numbering belongs in the Number param.
+  # Fires on demo data: "Bathroom 1", "Bathroom 2" (digit in Name field).
+  - id: room.name.no_digits_in_name
+    parameter: Name
+    requirement: not_matches_regex
+    pattern: "\\d"
+    severity_tag: missing_optional_param
+    description: |
+      Room Name should not contain digits — use the Number parameter for room
+      numbering. Mixed digits in Name break BOQ rollup and scheduling exports.
+    autofill:
+      strategy: none
+      fallback: null
+
+  # Name must start with a capital letter (firm style guide).
+  - id: room.name.capitalized
+    parameter: Name
+    requirement: matches_regex
+    pattern: "^[A-Z].*"
+    severity_tag: missing_optional_param
+    description: Room Name must start with a capital letter
+    autofill:
+      strategy: none
+      fallback: null
+
+  # Name must not contain placeholder tokens left over from concept design.
+  - id: room.name.no_placeholder_tokens
+    parameter: Name
+    requirement: not_matches_regex
+    pattern: "TBD|TODO|XXX|FIXME|\\?\\?\\?"
+    severity_tag: invalid_value_range
+    description: Room Name must not contain placeholder tokens (TBD/TODO/XXX/FIXME/???)
+    autofill:
+      strategy: none
+      fallback: null
+
+  # Number must be a strict 3-digit numeric (firm standard 2024).
+  # Fires on demo data: "11A", "07", "05A" — none match \d{3}.
+  - id: room.number.strict_three_digit
+    parameter: Number
+    requirement: matches_regex
+    pattern: "^\\d{3}$"
+    severity_tag: missing_required_param
+    description: |
+      Room Number must be exactly 3 digits (e.g. "101", "203"). Firm standard
+      2024 dropped the optional letter suffix to align with IFC RoomNumber.
+    autofill:
+      strategy: none
+      fallback: null

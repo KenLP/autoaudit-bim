@@ -1,0 +1,29 @@
+scenario: furniture_naming_convention
+target_category: Furniture
+rules:
+- id: furniture.family_name.naming_format
+  parameter: Family Name
+  requirement: matches_regex
+  pattern: ^ADSK_Fur_[A-Za-z0-9]+(_[A-Za-z0-9]+)?$
+  category: Furniture
+  severity_tag: naming_violation
+  description: Furniture family names must follow the format ADSK_Fur_ItemName_Optional
+    (e.g., ADSK_Fur_Chair_Viper)
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: manual
+  remediation:
+    action: create_acc_issue
+    new_value_strategy: inferred
+  requires_human: false
+  extraction_meta:
+    confidence: 1.0
+    source_text: Furniture family names must follow the format ADSK_Fur_ItemName_Optional
+      (e.g., ADSK_Fur_Chair_Viper)
+    source_location: Rule Builder (UI)
+    extracted_by: ''
+    extracted_at: ''
+    execution_status: executable

@@ -1,0 +1,136 @@
+# Demo Villa (simulated) — rules for `bim-orchestrator --demo`.
+#
+# Five rules covering the "Demo Villa" mock dataset (src/bim_orchestrator/demo/
+# dataset.py): everything the full loop can do — auto-fix (Path B, executes
+# immediately), approve-gated Path B (proposal parked in ACC, a human must
+# flip it to "In progress"), and manual Path A (straight to an ACC Issue).
+# No BEP/IBC citation is required (citation defaults to soft), so this rules
+# file needs no PDF/RAG grounding — pure model-check demo.
+#
+# Try it yourself: change `threshold: 900` below to something smaller (e.g.
+# 500) and re-run `bim-orchestrator --demo` — the narrow door (Type
+# "36x84 Narrow (600mm)") flips from non-compliant to compliant.
+
+scenario: demo_villa
+target_category: [Doors, Rooms]
+metadata:
+  source: "Demo Villa (simulated) — bim-orchestrator --demo"
+  note: >-
+    Reasoning is live (rules engine, QC, DesignAgent, trust pipeline,
+    verification report); data is staged (mock Revit + Forma clients,
+    see src/bim_orchestrator/demo/dataset.py).
+
+rules:
+  # ── Doors: Fire Rating must be present (inherit from host Wall when
+  #    empty) AND in canonical "X HR" format — v1.4-K22 compound autofill.
+  #    Covers TWO violating door types in the demo dataset in one rule:
+  #      * Fire Rating blank        → inherit host wall's "2 HR" → write Type
+  #      * Fire Rating "120 min"    → normalize to "2 HR" (no inherit needed)
+  #    Life-safety param → severity_high → approve-gated (a human flips the
+  #    parked ACC proposal issue to "In progress" to apply it).
+  - id: demo.doors.fire_rating
+    parameter: Fire Rating
+    requirement: canonical_format
+    category: Doors
+    severity_tag: fire_safety_change
+    severity_level: severity_high
+    description: >-
+      Door Fire Rating must be present (inherit from the host Wall if
+      blank) and formatted as "X HR".
+    fixability: auto
+    autofill:
+      strategy: inherit_then_normalize
+      normalize_kind: duration
+      normalize_format: "{h} HR"
+    remediation:
+      action: set_parameter
+      target: auto
+
+  # ── Doors: nominal leaf width >= 900mm (FIRM standard, not a code citation).
+  #    A-5 (review round 7, 2026-08-16): `Width` is the type-level NOMINAL leaf
+  #    width — NOT the clear opening IBC 1010.1.1 regulates (32 in = 813 mm
+  #    clear; a 914 mm nominal door can fail that). Borrowing the IBC label for
+  #    a nominal check is borrowed authority, so this rule says what it truly
+  #    is: an internal width floor. For a real clear-width check, see
+  #    `rules.bca_stair_run_clear_width.yaml` (bound_parameter on a measured
+  #    param). Geometric — a human must widen the opening, so this is manual →
+  #    Path A ACC Issue. Change `threshold` to see the verdict flip (file header).
+  - id: demo.doors.width_min
+    parameter: Width
+    requirement: numeric_compare
+    operator: ">="
+    threshold: 900
+    unit: mm
+    category: Doors
+    severity_tag: geometric_violation
+    description: Door nominal leaf width must be at least 900 mm (firm standard).
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue
+      comments_template: "Demo Villa: door width {value} mm < 900 mm minimum"
+
+  # ── Doors: Mark must follow "D_NNN" (v1.4-K16 auto-normalize — the rule
+  #    declares only the pattern; the engine tries every deterministic
+  #    canonicaliser and keeps the one that matches). "D 105" -> "D_105".
+  #    Naming/metadata only → severity_low → auto (Loop 1 self-heals).
+  - id: demo.doors.mark_naming
+    parameter: Mark
+    requirement: matches_regex
+    pattern: "^D_\\d{3}$"
+    category: Doors
+    severity_tag: naming_violation
+    severity_level: severity_low
+    description: Door Mark must follow the "D_NNN" naming convention.
+    fixability: auto
+    autofill:
+      strategy: normalize
+      normalize_kind: auto
+    remediation:
+      action: set_parameter
+      target: instance
+
+  # ── Rooms: Department must be present. No source to infer from beyond a
+  #    firm-wide default, so the fix is the fixed literal "General" — a
+  #    deterministic compose_template with no tokens. Metadata-only ->
+  #    severity_low -> auto (Loop 1 self-heals + re-query verifies).
+  - id: demo.rooms.department_required
+    parameter: Department
+    requirement: present_and_nonempty
+    category: Rooms
+    severity_tag: missing_optional_param
+    severity_level: severity_low
+    description: Every room must carry a non-empty Department value.
+    fixability: auto
+    autofill:
+      strategy: compose_template
+      template: "General"
+    remediation:
+      action: set_parameter
+      target_parameter: Department
+      new_value_strategy: inferred
+      target: instance
+
+  # ── Rooms: Number must be unique across the project. Duplicates are
+  #    programmatically renumberable (append A/B/…), but renumbering a room
+  #    is disruptive enough to warrant a human look — approve-gated. The
+  #    proposed value ("101A"/"101B") is computed and shown in the parked
+  #    ACC proposal issue even though it hasn't been written yet.
+  - id: demo.rooms.number_unique
+    parameter: Number
+    requirement: unique_in_set
+    category: Rooms
+    severity_tag: duplicate_identifier
+    description: Room numbers must be unique across the project.
+    fixability: auto
+    autofill:
+      strategy: none
+    remediation:
+      action: set_parameter
+      target_parameter: Number
+      new_value_strategy: next_available
+      comments_template: "Demo Villa: renumbered from '{old_value}' -- duplicate Number"
+      target: instance
+
+geometry_rules: []

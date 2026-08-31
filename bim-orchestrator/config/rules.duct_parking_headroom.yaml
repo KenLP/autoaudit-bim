@@ -1,0 +1,18 @@
+scenario: duct_parking_headroom
+target_category: Ducts
+geometry_rules:
+  - id: ducts.parking_headroom_min
+    category: Ducts
+    check_type: clearance_min
+    description: In the Parking space, a duct must keep at least 2100 mm clear
+      to the floor below it — people and cars move under these runs. Scoped via
+      spatial_filter so mech-shaft platforms elsewhere don't drown the story.
+    threshold_mm: 2100
+    clearance_direction: below
+    reference_category: Floors
+    reference_source: linked_arch
+    spatial_filter:
+      category: Spaces
+      name_contains: Parking
+    severity_tag: geometric_violation
+    execution_status: not_model_checkable

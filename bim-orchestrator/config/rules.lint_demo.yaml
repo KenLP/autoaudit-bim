@@ -1,0 +1,56 @@
+# rules.lint_demo.yaml — a DELIBERATELY BROKEN pair, for the AU beat-2 demo.
+#
+# Purpose (2026-08-22, adopted from the outside deck review, problem #9):
+# showing `--lint-rules` print "0 errors" on a healthy file proves only that
+# the healthy file passes. This pair proves the linter can actually CATCH the
+# failure class it exists for: two rules whose autofixes fight over the same
+# write target (Doors / Fire Rating), one normalizing to "X HR", the other to
+# "X MIN". Each fix re-opens the other rule — the oscillation/conflict case.
+#
+# Demo script: lint THIS file (refused), then lint the real set (green).
+# ⚠️ Never include this file in a real --run/--audit rule set.
+
+scenario: lint_demo
+target_category: [Doors]
+metadata:
+  source: "AU 2026 beat-2 demo — deliberately conflicting pair (2026-08-22)"
+  note: >-
+    Two canonical_format rules on the SAME parameter with OPPOSITE canonical
+    formats. Built to be refused by rules-lint; not for real audits.
+
+rules:
+  - id: lint_demo.doors.fire_rating_hours
+    parameter: Fire Rating
+    requirement: canonical_format
+    category: Doors
+    severity_tag: data_completeness
+    severity_level: severity_medium
+    description: >-
+      Door Fire Rating must read in hours, e.g. "1.5 HR".
+    fixability: auto
+    autofill:
+      strategy: normalize
+      normalize_kind: duration
+      normalize_format: "{h} HR"
+    remediation:
+      action: set_parameter
+      target: type
+
+  - id: lint_demo.doors.fire_rating_minutes
+    parameter: Fire Rating
+    requirement: canonical_format
+    category: Doors
+    severity_tag: data_completeness
+    severity_level: severity_medium
+    description: >-
+      Door Fire Rating must read in minutes, e.g. "90 MIN".
+    fixability: auto
+    autofill:
+      strategy: normalize
+      normalize_kind: duration
+      normalize_format: "{m} MIN"
+    remediation:
+      action: set_parameter
+      target: type
+
+geometry_rules: []

@@ -1,0 +1,81 @@
+# IRC habitable-room minimums for a one-family dwelling (2026-08-18).
+#
+# Target model: Pacific Continental Residence Sample (Revit 2027 sample).
+# A one/two-family dwelling is governed by the IRC, NOT the IBC — which is
+# why this file exists alongside the IBC 716 rulesets rather than reusing
+# them. Two of the three classic IRC minimums are checkable from parameters
+# this model actually carries (Area / Room Width / Room Length / Ceiling
+# Height are all populated on all 30 rooms; Occupancy and Department are not
+# populated at all, so nothing here depends on them):
+#
+#   R304.1 minimum floor area 70 sf (habitable; kitchens exempt) — via the
+#          lookup table, so the habitable classification is reviewable data.
+#   R305.1 minimum ceiling height 7 ft — applies to habitable rooms, hallways
+#          AND bathrooms, i.e. effectively every room here, so it needs no
+#          table: a flat numeric_compare states it more honestly.
+#
+# WHICH HEIGHT PARAMETER (Ken's convention, 2026-08-19): a Room's height is
+# read from `Unbounded Height`, NEVER from `Ceiling Height`. On a Room,
+# `Ceiling Height` / `Room Width` / `Room Length` are hand-typed project
+# parameters (writable, never recomputed by Revit) — checking one audits data
+# entry, not the building. `Unbounded Height` is read-only and derived from
+# Base Offset -> Upper Limit + Limit Offset.
+#
+# HONESTY NOTE FOR THIS MODEL: measured live on 2026-08-19, all 30 Pacific
+# rooms carry Upper Limit = "Roof" with Limit Offset = 4'-0", so
+# `Unbounded Height` is a CONSTANT 13'-0" across every room. The R305.1 rule
+# below is therefore VACUOUS here — it passes 30/30 without distinguishing
+# anything. Keep that out of any claim made from a Pacific run: the evidence
+# in this model is the area rule. (The real per-room ceiling height lives on
+# category Ceilings as `Height Offset From Level`, which does vary on this
+# model: 6'-9 21/32" .. 13'-5 3/32". Checking it as IRC R305.1 would need
+# ceiling-to-room containment plus the R305.1.1 soffit/beam exceptions, so it
+# is a geometry axis to build deliberately, not a parameter swap.)
+#
+# R304.2 (7 ft minimum horizontal dimension, habitable only) is NOT included:
+# expressing "the smaller of Room Width and Room Length" needs a derived
+# value the rule language does not have. Left out rather than approximated —
+# the Nook (2.5 ft wide) is the room it would catch, and the min-area rule
+# already routes the Nook to a human.
+
+scenario: irc_residence
+target_category: Rooms
+rules:
+  - id: rooms.irc.min_habitable_area
+    parameter: Area
+    requirement: relation_compare
+    category: Rooms
+    compare_kind: numeric
+    operator: ">="
+    lookup: irc_room_min_area
+    severity_tag: rule_violation
+    severity_level: severity_high
+    description: >
+      IRC R304.1 — a habitable room must have at least 70 sq ft of floor
+      area (kitchens exempted). The habitable classification per room name
+      lives in lookup table 'irc_room_min_area', where 0 means the room is
+      not habitable and no minimum applies. A room name the table does not
+      classify routes to manual review.
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue
+
+  - id: rooms.irc.min_ceiling_height
+    parameter: Unbounded Height
+    requirement: numeric_compare
+    operator: ">="
+    threshold: 7
+    category: Rooms
+    severity_tag: geometric_violation
+    severity_level: severity_high
+    description: >
+      IRC R305.1 — habitable rooms, hallways and bathrooms must have a
+      ceiling height of at least 7 ft. Read from the Room's derived
+      'Unbounded Height', not the hand-typed 'Ceiling Height' parameter.
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue

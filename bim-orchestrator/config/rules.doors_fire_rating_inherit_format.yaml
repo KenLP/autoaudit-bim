@@ -1,0 +1,25 @@
+scenario: doors_fire_rating_inherit_format
+target_category: Doors
+metadata:
+  source: Demo — v1.4-K22 compound inherit_then_normalize
+  note: >-
+    ONE rule for "Door Fire Rating must be present (inherit from host Wall if
+    empty) AND in canonical 'X HR' format". The fix is a deterministic pipeline:
+    fill-from-host-if-empty -> normalise. Off-everything -> Path A.
+rules:
+  - id: doors.fire_rating.inherit_and_format
+    parameter: Fire Rating
+    requirement: canonical_format
+    category: Doors
+    severity_tag: missing_required_param
+    description: >-
+      Door must have a Fire Rating; if empty, inherit from the host Wall.
+      Value must be formatted as 'X HR' where X is a number.
+    fixability: auto
+    autofill:
+      strategy: inherit_then_normalize
+      normalize_kind: duration
+      normalize_format: "{h} HR"
+    remediation:
+      action: set_parameter
+      target: auto

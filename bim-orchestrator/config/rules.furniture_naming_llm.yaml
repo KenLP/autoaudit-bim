@@ -1,0 +1,40 @@
+scenario: furniture_naming_llm
+target_category: Furniture
+# Phase 2 (TH2) demo — runtime Remediation Agent.
+# Same detect-rule as rules.furniture_naming_convention.yaml, but remediation is
+# delegated to the LLM: parsing an open-vocabulary legacy name
+# (Table_Round_withchair) into the convention has no deterministic strategy.
+# Governance: new_value_strategy=llm_propose → DesignAgent asks the injected
+# RemediationLLMAgent; the SAME regex re-validates the proposal (closed loop);
+# the value is NEVER auto (capped to approve — human disposes). Activate the LLM
+# with env BIM_LLM_REMEDIATION=1; without it the rule degrades to a Path A issue.
+rules:
+- id: furniture.family_name.naming_format
+  parameter: Family Name
+  requirement: matches_regex
+  pattern: ^ADSK_Fur_[A-Za-z0-9]+(_[A-Za-z0-9]+)?$
+  category: Furniture
+  severity_tag: naming_violation
+  severity_level: severity_low
+  description: Furniture family names must follow the format ADSK_Fur_ItemName_Optional
+    (e.g., ADSK_Fur_Chair_Viper)
+  autofill:
+    strategy: none
+  citation:
+    mode: soft
+    on_missing: warn
+  fixability: auto
+  remediation:
+    action: rename_element
+    target_parameter: Family Name
+    new_value_strategy: llm_propose
+    llm_safety_critical: false
+  requires_human: false
+  extraction_meta:
+    confidence: 1.0
+    source_text: Furniture family names must follow the format ADSK_Fur_ItemName_Optional
+      (e.g., ADSK_Fur_Chair_Viper)
+    source_location: Rule Builder (UI)
+    extracted_by: ''
+    extracted_at: ''
+    execution_status: executable

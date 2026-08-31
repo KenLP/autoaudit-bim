@@ -1,0 +1,1002 @@
+{
+  "$defs": {
+    "CitationPolicy": {
+      "description": "Per-rule citation enforcement policy (Phase 2 Day 4).\n\n* `mode=soft` (default): citation is bonus metadata. Backward compatible \u2014\n  rules YAML without a `citation:` block falls into this branch.\n* `mode=hard`: every finding produced by this rule MUST cite a source.\n  Missing citations are flagged via `citation_missing` (warn) or by\n  lowering severity by one level (downgrade).\n* `source_filter`: when set, only chunks whose metadata.source is in this\n  list are eligible \u2014 prevents a BEP rule citing an IBC chunk by accident.",
+      "properties": {
+        "mode": {
+          "default": "soft",
+          "enum": [
+            "hard",
+            "soft"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "source_filter": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Filter"
+        },
+        "on_missing": {
+          "default": "warn",
+          "enum": [
+            "warn",
+            "downgrade"
+          ],
+          "title": "On Missing",
+          "type": "string"
+        }
+      },
+      "title": "CitationPolicy",
+      "type": "object"
+    },
+    "ExtractionMeta": {
+      "description": "v1.4 ExtractionAgent provenance attached to extracted rules.\n\nOptional \u2014 hand-authored YAML rules don't carry this. ``Rule`` instances\nproduced by the v1.4 ExtractionAgent (or the D0 Claude Desktop skill\npack workflow) populate it so the user can trace any finding back to\nthe BEP clause that justified it.\n\nFields:\n  * ``confidence`` \u2014 LLM self-reported certainty (0.0\u20131.0). Acts as\n    an automatic fixability gate: below 0.75 we force-bump to manual.\n  * ``source_text`` \u2014 exact quote from the BEP for traceability.\n  * ``source_location`` \u2014 human-readable pointer (``\"BEP \u00a71.7 page 12\"``).\n  * ``extracted_by`` \u2014 which LLM (or human) produced this rule.\n  * ``extracted_at`` \u2014 ISO-8601 timestamp of extraction.\n  * ``execution_status`` \u2014 see :data:`ExecutionStatus`. Only entries\n    with ``executable`` actually load into the runtime RuleSet; the\n    other two land in the extraction review queue with the reason\n    captured in ``status_reason``.\n  * ``notes`` \u2014 optional list of interpretation guidance from the\n    source that doesn't fit in ``description`` (measurement\n    methodology, definition clarifications, scope nuances). For\n    example, IBC \u00a71003.2 has a note explaining headroom is measured\n    \"from finished floor to underside of obstruction\" \u2014 that goes\n    here, not in the rule's description. The runtime QC engine\n    currently ignores notes; they're informational for downstream\n    custom checkers and human reviewers.",
+      "properties": {
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "source_text": {
+          "title": "Source Text",
+          "type": "string"
+        },
+        "source_location": {
+          "default": "",
+          "title": "Source Location",
+          "type": "string"
+        },
+        "extracted_by": {
+          "default": "",
+          "title": "Extracted By",
+          "type": "string"
+        },
+        "extracted_at": {
+          "default": "",
+          "title": "Extracted At",
+          "type": "string"
+        },
+        "execution_status": {
+          "default": "executable",
+          "enum": [
+            "executable",
+            "needs_domain_mapping",
+            "not_model_checkable"
+          ],
+          "title": "Execution Status",
+          "type": "string"
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status Reason"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "confidence",
+        "source_text"
+      ],
+      "title": "ExtractionMeta",
+      "type": "object"
+    },
+    "GeometryRule": {
+      "description": "Geometry-based check \u2014 captured for v2, not executed by current rules_engine.\n\nStores requirements that depend on 3D geometry, spatial containment, or\nlinked-file traversal. Always written with ``execution_status =\n\"not_model_checkable\"`` so the Rule Builder can persist them losslessly\nwhile the geometric evaluator registry (Tier 3 roadmap) is built.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "check_type": {
+          "enum": [
+            "clearance_min",
+            "clearance_max",
+            "spatial_containment",
+            "min_spacing"
+          ],
+          "title": "Check Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "threshold_mm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Mm"
+        },
+        "clearance_direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "below",
+                "above",
+                "horizontal"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Clearance Direction"
+        },
+        "reference_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Category"
+        },
+        "reference_source": {
+          "default": "same_model",
+          "enum": [
+            "same_model",
+            "linked_arch",
+            "linked_struct",
+            "linked_mep"
+          ],
+          "title": "Reference Source",
+          "type": "string"
+        },
+        "spatial_filter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeometryRuleSpatialFilter"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "severity_tag": {
+          "default": "geometric_violation",
+          "title": "Severity Tag",
+          "type": "string"
+        },
+        "execution_status": {
+          "default": "not_model_checkable",
+          "enum": [
+            "executable",
+            "needs_domain_mapping",
+            "not_model_checkable"
+          ],
+          "title": "Execution Status",
+          "type": "string"
+        },
+        "view_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "View Id"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "check_type",
+        "description"
+      ],
+      "title": "GeometryRule",
+      "type": "object"
+    },
+    "GeometryRuleSpatialFilter": {
+      "description": "Restricts which elements are checked to those inside a spatial container.",
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "name_contains": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name Contains"
+        },
+        "name_exact": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name Exact"
+        }
+      },
+      "title": "GeometryRuleSpatialFilter",
+      "type": "object"
+    },
+    "Rule": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "parameter": {
+          "title": "Parameter",
+          "type": "string"
+        },
+        "requirement": {
+          "enum": [
+            "present_and_nonempty",
+            "positive_number",
+            "matches_regex",
+            "matches_regex_if_present",
+            "not_matches_regex",
+            "numeric_min",
+            "numeric_min_conditional",
+            "unique_in_set",
+            "fire_rating_ge",
+            "numeric_compare",
+            "relation_compare",
+            "canonical_format"
+          ],
+          "title": "Requirement",
+          "type": "string"
+        },
+        "pattern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pattern"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "when_param": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "When Param"
+        },
+        "when_pattern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "When Pattern"
+        },
+        "other_param": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Other Param"
+        },
+        "operator": {
+          "anyOf": [
+            {
+              "enum": [
+                ">",
+                ">=",
+                "<",
+                "<=",
+                "==",
+                "!="
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operator"
+        },
+        "compare_kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "numeric",
+                "fire_rating",
+                "string"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compare Kind"
+        },
+        "scope_filter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleScopeFilter"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "severity_tag": {
+          "title": "Severity Tag",
+          "type": "string"
+        },
+        "severity_level": {
+          "anyOf": [
+            {
+              "enum": [
+                "severity_low",
+                "severity_medium",
+                "severity_high"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity Level"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "autofill": {
+          "$ref": "#/$defs/RuleAutofill"
+        },
+        "citation": {
+          "$ref": "#/$defs/CitationPolicy"
+        },
+        "fixability": {
+          "default": "manual",
+          "enum": [
+            "manual",
+            "auto"
+          ],
+          "title": "Fixability",
+          "type": "string"
+        },
+        "remediation": {
+          "$ref": "#/$defs/RuleRemediation"
+        },
+        "requires_human": {
+          "default": false,
+          "title": "Requires Human",
+          "type": "boolean"
+        },
+        "rule_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "parameter_completeness",
+                "value_constraint",
+                "naming_convention",
+                "uniqueness_constraint",
+                "cross_element_relationship"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Type"
+        },
+        "extraction_meta": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtractionMeta"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "bound_parameter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound Parameter"
+        }
+      },
+      "required": [
+        "id",
+        "parameter",
+        "requirement",
+        "severity_tag",
+        "description",
+        "autofill"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "RuleAutofill": {
+      "properties": {
+        "strategy": {
+          "enum": [
+            "infer_from_adjacent",
+            "infer_from_room_name",
+            "compose_template",
+            "normalize",
+            "inherit_from_host",
+            "inherit_then_normalize",
+            "none"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        },
+        "fallback": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallback"
+        },
+        "template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Template"
+        },
+        "sequence_scope": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sequence Scope"
+        },
+        "normalize_kind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalize Kind"
+        },
+        "normalize_format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalize Format"
+        },
+        "normalize_map": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalize Map"
+        },
+        "normalize_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalize Source"
+        },
+        "normalize_reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalize Reference"
+        },
+        "host_param": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host Param"
+        }
+      },
+      "required": [
+        "strategy"
+      ],
+      "title": "RuleAutofill",
+      "type": "object"
+    },
+    "RuleRemediation": {
+      "description": "How DesignAgent should act on a finding produced by this rule.\n\n* ``action=create_acc_issue`` (default): the Phase 1 path \u2014 DesignAgent\n  builds an ACC Issue via Forma MCP. Used for ``fixability=manual``\n  cases where a human (or another model) must judge the fix.\n* ``action=set_parameter``: write a single parameter via Revit MCP.\n  Pair with ``target_parameter`` (defaults to the rule's parameter) and\n  a ``new_value_strategy``. ``inferred`` reuses the existing autofill\n  pipeline; ``fixed`` writes ``new_value`` verbatim; ``next_available``\n  lets DesignAgent compute a unique replacement (e.g. for duplicate\n  room numbers).\n* ``action=rename_element``: write the element's Name parameter.\n\n``comments_template`` \u2014 when set, DesignAgent will also tag the room's\nComments parameter so the audit trail is visible in Revit. Supports\n``{value}`` / ``{old_value}`` / ``{new_value}`` / ``{rule_id}``\nplaceholders.",
+      "properties": {
+        "action": {
+          "default": "create_acc_issue",
+          "enum": [
+            "create_acc_issue",
+            "set_parameter",
+            "rename_element"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "target_parameter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Parameter"
+        },
+        "new_value": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Value"
+        },
+        "new_value_strategy": {
+          "default": "inferred",
+          "enum": [
+            "fixed",
+            "inferred",
+            "next_available"
+          ],
+          "title": "New Value Strategy",
+          "type": "string"
+        },
+        "comments_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comments Template"
+        },
+        "target": {
+          "default": "instance",
+          "enum": [
+            "instance",
+            "type",
+            "family",
+            "auto"
+          ],
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "title": "RuleRemediation",
+      "type": "object"
+    },
+    "RuleScopeFilter": {
+      "description": "v1.4-K10: universal 'applies to' filter for a parameter rule.\n\nThe rule only evaluates an element when ``element.params[param]`` matches\n``pattern`` (regex search). Out-of-scope elements quietly pass. This makes\nthe conditional gate a first-class dimension of ANY check (Solibri's\n'applicable components') rather than a numeric_min-only variant.",
+      "properties": {
+        "param": {
+          "title": "Param",
+          "type": "string"
+        },
+        "pattern": {
+          "title": "Pattern",
+          "type": "string"
+        }
+      },
+      "required": [
+        "param",
+        "pattern"
+      ],
+      "title": "RuleScopeFilter",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "scenario": {
+      "title": "Scenario",
+      "type": "string"
+    },
+    "target_category": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      ],
+      "title": "Target Category"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/Rule"
+      },
+      "title": "Rules",
+      "type": "array"
+    },
+    "metadata": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Metadata"
+    },
+    "geometry_rules": {
+      "items": {
+        "$ref": "#/$defs/GeometryRule"
+      },
+      "title": "Geometry Rules",
+      "type": "array"
+    }
+  },
+  "required": [
+    "scenario",
+    "target_category"
+  ],
+  "title": "RuleSet",
+  "type": "object",
+  "x-bim-orchestrator-enums": {
+    "category_keys": [
+      "air-terminals",
+      "areas",
+      "cable-tray",
+      "cable-tray-fittings",
+      "casework",
+      "ceilings",
+      "communication-devices",
+      "conduit",
+      "conduit-fittings",
+      "curtain-mullions",
+      "curtain-panels",
+      "curtain-systems",
+      "data-devices",
+      "doors",
+      "duct-accessories",
+      "duct-fittings",
+      "duct-insulations",
+      "ducts",
+      "electrical-equipment",
+      "electrical-fixtures",
+      "fabric-areas",
+      "fabric-reinforcement",
+      "fire-alarm-devices",
+      "flex-ducts",
+      "flex-pipes",
+      "floors",
+      "furniture",
+      "furniture-systems",
+      "generic-models",
+      "lighting-devices",
+      "lighting-fixtures",
+      "mechanical-equipment",
+      "nurse-call-devices",
+      "pipe-accessories",
+      "pipe-fittings",
+      "pipe-insulations",
+      "pipes",
+      "planting",
+      "plumbing-fixtures",
+      "ramps",
+      "rebar-area",
+      "rebar-path",
+      "roofs",
+      "rooms",
+      "security-devices",
+      "specialty-equipment",
+      "sprinklers",
+      "stairs",
+      "stairs-landings",
+      "stairs-railings",
+      "stairs-runs",
+      "structural-columns",
+      "structural-connections",
+      "structural-foundation",
+      "structural-framing",
+      "structural-rebar",
+      "structural-stiffener",
+      "structural-truss",
+      "walls",
+      "windows",
+      "wires"
+    ],
+    "category_display_labels": [
+      "Air Terminals",
+      "Area Reinforcement",
+      "Areas",
+      "Cable Tray Fittings",
+      "Cable Trays",
+      "Casework",
+      "Ceilings",
+      "Communication Devices",
+      "Conduit Fittings",
+      "Conduits",
+      "Curtain Panels",
+      "Curtain Systems",
+      "Curtain Wall Mullions",
+      "Data Devices",
+      "Doors",
+      "Duct Accessories",
+      "Duct Fittings",
+      "Duct Insulations",
+      "Ducts",
+      "Electrical Equipment",
+      "Electrical Fixtures",
+      "Fabric Areas",
+      "Fabric Reinforcement",
+      "Fire Alarm Devices",
+      "Flex Ducts",
+      "Flex Pipes",
+      "Floors",
+      "Furniture",
+      "Furniture Systems",
+      "Generic Models",
+      "Lighting Devices",
+      "Lighting Fixtures",
+      "Mechanical Equipment",
+      "Nurse Call Devices",
+      "Path Reinforcement",
+      "Pipe Accessories",
+      "Pipe Fittings",
+      "Pipe Insulations",
+      "Pipes",
+      "Planting",
+      "Plumbing Fixtures",
+      "Railings",
+      "Ramps",
+      "Roofs",
+      "Rooms",
+      "Security Devices",
+      "Specialty Equipment",
+      "Sprinklers",
+      "Stair Landings",
+      "Stair Runs",
+      "Stairs",
+      "Structural Columns",
+      "Structural Connections",
+      "Structural Foundations",
+      "Structural Framing",
+      "Structural Rebar",
+      "Structural Stiffeners",
+      "Structural Trusses",
+      "Walls",
+      "Windows",
+      "Wires"
+    ],
+    "requirement": [
+      "present_and_nonempty",
+      "positive_number",
+      "matches_regex",
+      "matches_regex_if_present",
+      "not_matches_regex",
+      "numeric_min",
+      "numeric_min_conditional",
+      "unique_in_set",
+      "fire_rating_ge",
+      "numeric_compare",
+      "relation_compare",
+      "canonical_format"
+    ],
+    "rule_type": [
+      "parameter_completeness",
+      "value_constraint",
+      "naming_convention",
+      "uniqueness_constraint",
+      "cross_element_relationship"
+    ],
+    "execution_status": [
+      "executable",
+      "needs_domain_mapping",
+      "not_model_checkable"
+    ],
+    "severity_tag": [
+      "fire_safety_change",
+      "geometric_violation",
+      "missing_required_param",
+      "quality_change",
+      "duplicate_identifier",
+      "naming_violation"
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "issue_id": "au-demo-pending",
+  "display_id": 9001,
+  "project_id": "demo-villa-simulated",
+  "created_at": "2026-07-12T09:00:00+00:00",
+  "applied": false,
+  "status": "pending_approval",
+  "issue_status": "open",
+  "fingerprint": "au-demo-pending-fixture-fp01",
+  "fixes": [
+    {
+      "finding_id": "demo.doors.fire_rating::703",
+      "element_id": "9102",
+      "flagged_instance": "703",
+      "parameter": "Fire Rating",
+      "old_value": "120 min",
+      "new_value": "2 HR",
+      "value_source": null,
+      "evidence": null,
+      "inherited_from": null,
+      "action": "set_parameter"
+    },
+    {
+      "finding_id": "demo.doors.fire_rating::701",
+      "element_id": "9101",
+      "flagged_instance": "701",
+      "parameter": "Fire Rating",
+      "old_value": "",
+      "new_value": "2 HR",
+      "value_source": null,
+      "evidence": null,
+      "inherited_from": "2 HR",
+      "action": "set_parameter"
+    }
+  ]
+}

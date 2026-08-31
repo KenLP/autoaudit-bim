@@ -1,0 +1,56 @@
+# Approved MEP space-naming vocabulary (demo reference set, D4).
+#
+# Why a controlled vocabulary: MEP quantities are computed PER SPACE, and the
+# Space Name is what flows into load schedules, ventilation tables and COBie
+# handover. Two spellings of the same room type ("Restroom" / "RESTROOM")
+# silently split one line of a schedule into two.
+#
+# The three tiers this file makes visible (policies/reference.py):
+#   Tier 1  exact member                  -> compliant, nothing to do
+#   Tier 2  alias / case / separator      -> ONE deterministic canonical value
+#   Tier 3  anything else ("R", "Space")  -> NOT guessed; routed to a human
+#
+# Canonicals below were read off R27_Snowdon Towers Sample Plumbing
+# (2026-08-01) — they are the names the model already uses correctly.
+# Aliases are the ordinary variants a firm accumulates across projects.
+name: mep_space_names
+description: >-
+  Approved MEP space names (BEP §4.1 handover vocabulary). Space Name must be
+  one of these; known variants canonicalise deterministically.
+case_sensitive: false
+entries:
+  - canonical: "Restroom"
+    aliases: ["WC", "Toilet", "Bathroom", "Wash Room"]
+  - canonical: "Utility"
+    aliases: ["Mech", "Mechanical Room", "Mech Room", "Plant Room"]
+  - canonical: "Water"
+    aliases: ["Water Room", "Water Service"]
+  - canonical: "Stair"
+    aliases: ["Stairs", "Stairwell", "Stair Well"]
+  - canonical: "Elevator"
+    aliases: ["Lift", "Elev", "Elevator Shaft"]
+  - canonical: "Parking Garage"
+    aliases: ["Parking", "Garage", "Car Park"]
+  - canonical: "Residential Lobby"
+    aliases: ["Lobby", "Res Lobby"]
+  - canonical: "Commercial/Retail"
+    aliases: ["Retail", "Commercial"]
+  - canonical: "Cafe"
+    aliases: ["Café", "Coffee Shop"]
+  - canonical: "Cafe Kitchen"
+    aliases: ["Kitchen", "Café Kitchen"]
+  - canonical: "Outdoor Covered Dining"
+    aliases: ["Covered Dining", "Outdoor Dining"]
+  - canonical: "Mezzanine Dining"
+    aliases: ["Mezz Dining"]
+  - canonical: "Office Unit"
+    aliases: ["Office"]
+  - canonical: "Studio Unit"
+    aliases: ["Studio"]
+  - canonical: "Two Story Studio Unit"
+    aliases: ["Two-Story Studio Unit", "2 Story Studio Unit"]
+  - canonical: "Live/Work Unit"
+    aliases: ["Live-Work Unit", "Live Work Unit"]
+# DELIBERATELY ABSENT — these are the Tier-3 story, do not "helpfully" add them:
+#   "R"      — ambiguous (Restroom? Retail? Residential?) → a human decides.
+#   "Space"  — Revit's default for an unnamed space → a human names it.

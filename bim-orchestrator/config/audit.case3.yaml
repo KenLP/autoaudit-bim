@@ -1,0 +1,30 @@
+# Case 3 recording profile (2026-08-26) — Mark-from-space + cross-link headroom.
+#
+# WHY A PROFILE AND NOT QUICK RUN: the Mark rule's compose_template autofill is
+# DETERMINISTIC, so under a plain run K4 Opt B auto-applies it — Ken's midnight
+# test (run-727f0454) wrote 119 Marks into the cloud Plumbing model with no
+# approval stop. The demo's story is "proposals wait for a person", and
+# `propose_only: true` is the mechanism that makes that true: every would-be
+# auto Path B decision is demoted to approve (v1.7-3bP1), so the run parks ONE
+# proposal issue (119 fixes) + two Path A groups and writes NOTHING.
+#
+# The clearance rule file is created LIVE during the take (beat 2, Geometry
+# tab, scenario slug duct_floor_clearance) — this profile just references it;
+# profile validation runs at POST /audits, by which time the file exists.
+name: case3
+rules:
+  - rules.duct_mark.yaml
+  - rules.duct_floor_clearance.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: false
+  propose_only: true
+unattended:
+  enabled: false

@@ -1,0 +1,147 @@
+# Demo Villa — PHASE 2 staging ruleset (`bim-orchestrator --demo --rules
+# config/rules.p2_demo.yaml`) — built 2026-08-15 for the AU deck's slide #33
+# ("DEMO — Phase 2: Three Agents, One Run") and its clip.
+#
+# = rules.demo.yaml (all five Phase 1 rules, unchanged) PLUS one rule that
+# gives the Remediation agent real work: door Type Marks in the staged
+# dataset are "36x84"-style (present but WRONG), and no deterministic
+# canonicaliser can turn "36x84" into a "DT-NN" identifier — so with
+# `new_value_strategy: llm_propose` the RemediationLLMAgent originates the
+# value, the SAME matches_regex check re-validates it, and the result parks
+# as an approve-gated proposal. Requires the private extension
+# (bim-orchestrator-llm) installed and BIM_LLM_REMEDIATION=1 — without them
+# llm_propose returns None -> Path A issue, never a fabricated value.
+#
+# ROUTING LESSON (verified live 2026-08-15, first staging attempt failed):
+# an ABSENT value (missing_data, e.g. Comments=None) with no autofill source
+# routes to Path A BEFORE llm_propose is ever consulted
+# (design._can_auto_fill_missing requires a suggested_value) — "a blank with
+# no source is a human question" is Phase 1 doctrine the LLM cannot override.
+# Remediation's lane is values that are PRESENT but WRONG (non_compliant)
+# and deterministically unfixable. Stage accordingly.
+#
+# The three moments the clip points at, with this file:
+#   1. Remediation — proposal card for demo.doors.type_mark_format (LLM
+#      values, re-validated against the regex, parked).
+#   2. Diagnostic  — enrichment on the Path A issues (width_min).
+#   3. Supervisor  — advisory stop check on loop exit.
+
+scenario: demo_villa_p2
+target_category: [Doors, Rooms]
+metadata:
+  source: "Demo Villa (simulated) — Phase 2 staging for AU slide #33"
+  note: >-
+    rules.demo.yaml + one llm_propose rule (Doors Comments). Reasoning and
+    the three LLM agents are live; data is staged (mock Revit + Forma).
+
+rules:
+  # ── PHASE 2 STAGING — the Remediation agent's work. Door Type Marks are
+  #    factory-style ("36x84") — present but violating the DT-NN standard,
+  #    and no deterministic canonicaliser can invent the identifier.
+  #    llm_propose asks the Remediation agent; the value re-validates
+  #    through the SAME matches_regex and is ALWAYS approve-gated
+  #    (LLM fixes can never reach autonomy "auto").
+  - id: demo.doors.type_mark_format
+    parameter: Type Mark
+    requirement: matches_regex
+    pattern: "^DT-\\d{2}$"
+    category: Doors
+    severity_tag: naming_violation
+    severity_level: severity_medium
+    description: >-
+      Door Type Mark must follow the "DT-NN" schedule identifier standard
+      (two digits, e.g. DT-01).
+    fixability: auto
+    autofill:
+      strategy: none
+    remediation:
+      action: set_parameter
+      target_parameter: Type Mark
+      new_value_strategy: llm_propose
+      target: type
+
+  # ── Below: rules.demo.yaml verbatim (Phase 1 behaviour unchanged) ──────
+  - id: demo.doors.fire_rating
+    parameter: Fire Rating
+    requirement: canonical_format
+    category: Doors
+    severity_tag: fire_safety_change
+    severity_level: severity_high
+    description: >-
+      Door Fire Rating must be present (inherit from the host Wall if
+      blank) and formatted as "X HR".
+    fixability: auto
+    autofill:
+      strategy: inherit_then_normalize
+      normalize_kind: duration
+      normalize_format: "{h} HR"
+    remediation:
+      action: set_parameter
+      target: auto
+
+  - id: demo.doors.width_min
+    parameter: Width
+    requirement: numeric_compare
+    operator: ">="
+    threshold: 900
+    unit: mm
+    category: Doors
+    severity_tag: geometric_violation
+    description: Door clear width must be at least 900 mm.
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue
+      comments_template: "Demo Villa: door width {value} mm < 900 mm minimum"
+
+  - id: demo.doors.mark_naming
+    parameter: Mark
+    requirement: matches_regex
+    pattern: "^D_\\d{3}$"
+    category: Doors
+    severity_tag: naming_violation
+    severity_level: severity_low
+    description: Door Mark must follow the "D_NNN" naming convention.
+    fixability: auto
+    autofill:
+      strategy: normalize
+      normalize_kind: auto
+    remediation:
+      action: set_parameter
+      target: instance
+
+  - id: demo.rooms.department_required
+    parameter: Department
+    requirement: present_and_nonempty
+    category: Rooms
+    severity_tag: missing_optional_param
+    severity_level: severity_low
+    description: Every room must carry a non-empty Department value.
+    fixability: auto
+    autofill:
+      strategy: compose_template
+      template: "General"
+    remediation:
+      action: set_parameter
+      target_parameter: Department
+      new_value_strategy: inferred
+      target: instance
+
+  - id: demo.rooms.number_unique
+    parameter: Number
+    requirement: unique_in_set
+    category: Rooms
+    severity_tag: duplicate_identifier
+    description: Room numbers must be unique across the project.
+    fixability: auto
+    autofill:
+      strategy: none
+    remediation:
+      action: set_parameter
+      target_parameter: Number
+      new_value_strategy: next_available
+      comments_template: "Demo Villa: renumbered from '{old_value}' -- duplicate Number"
+      target: instance
+
+geometry_rules: []

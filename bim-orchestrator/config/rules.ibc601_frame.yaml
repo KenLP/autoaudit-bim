@@ -1,0 +1,72 @@
+# IBC Table 601 on the primary structural frame (2026-08-19).
+#
+# Target model: R27_Snowdon Towers Sample Structural (Revit 2027 sample, cloud).
+# 959 Structural Framing instances across 20 types.
+#
+# WHY A TABLE AND NOT A THRESHOLD. "Every beam must have a Fire Rating" is a
+# presence check; "every beam's Fire Rating must look like '2 HR'" is a format
+# check. Neither catches the member that carries a present, correctly formatted
+# "1 HR" while the code demands 2 — which is 339 of the 959 members in this
+# model. Only a code table can state a REQUIRED LEVEL per member and compare
+# against it. That is the whole point of this ruleset.
+#
+# WHERE THE REQUIREMENT COMES FROM: `lookup: ibc601_frame`
+# (`config/lookup.ibc601_frame.yaml`) resolves the required rating from the
+# member's OWN `Structural Material` — steel 2 HR, cast-in-place concrete no
+# parameter requirement (rating via cover), undecided material → manual review.
+# The construction-type assumption (Type IB) lives in that file's header, in one
+# place a reviewer can disagree with. This is the own-parameter lookup key
+# (v1.7-R19): the table reads a param of the element being checked, not of a
+# host.
+#
+# WHAT THIS RULE DELIBERATELY DOES NOT DO:
+#   * It does not WRITE. `fixability: manual` + `autofill.strategy: none` +
+#     `remediation.action: create_acc_issue`. A missing or under-spec fire
+#     rating is a design decision backed by a tested assembly — the engine can
+#     tell you the member is short of the code level; it must not invent the
+#     value that closes the gap.
+#   * It does not check concrete COVER. The concrete rows are exempted from the
+#     parameter check precisely because their rating lives in the section, and
+#     that is a different axis (rebar cover per ACI 318/216), not a variant of
+#     this rule.
+#   * It does not check secondary members separately. IBC Table 601 rates the
+#     primary frame and (in Type I/II) floor/roof construction at different
+#     levels; this ruleset applies the primary-frame line to all Structural
+#     Framing. Splitting primary from secondary needs a classification the model
+#     does not carry (`Structural Usage` distinguishes Girder/Joist/Purlin but
+#     is not a code classification) — left out rather than approximated.
+#   * There is no second rule. A presence/format companion would add nothing:
+#     a blank rating already fails this rule (missing_data), and any value the
+#     table can't compare is reported, not silently passed.
+#
+# RUN (the element cap matters — the default 300 would cover a third of the model):
+#   uv run bim-orchestrator --run-revit --rules config/rules.ibc601_frame.yaml \
+#       --dry-run --max-elements 1000
+
+scenario: ibc601_frame
+target_category: Structural Framing
+rules:
+  - id: structural_framing.ibc601.primary_frame_rating
+    parameter: Fire Rating
+    requirement: relation_compare
+    category: Structural Framing
+    compare_kind: fire_rating
+    operator: ">="
+    lookup: ibc601_frame
+    severity_tag: rule_violation
+    severity_level: severity_high
+    description: >
+      IBC Table 601 — a primary structural frame member must carry at least the
+      fire-resistance rating its construction type requires. The required rating
+      per structural material lives in lookup table 'ibc601_frame' (assumes
+      construction Type IB = 2 HR per the project BEP); cast-in-place concrete
+      carries no Fire Rating parameter requirement because its rating comes from
+      concrete cover. A member whose Structural Material the table does not
+      classify routes to manual review — unless its Fire Rating is also blank,
+      in which case missing-data wins the bucket (as on this model's 28
+      "<By Category>" members).
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue

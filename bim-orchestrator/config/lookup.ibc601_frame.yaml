@@ -1,0 +1,70 @@
+# IBC Table 601 — fire-resistance rating required of the PRIMARY STRUCTURAL FRAME,
+# resolved by the framing member's own structural material (2026-08-19).
+#
+# THE TABLE IS THE PROJECT'S IMPLEMENTATION DECISION, WRITTEN DOWN. IBC Table 601
+# does not state a number you can read off a beam: it states a rating per building
+# CONSTRUCTION TYPE (IA/IB/IIA/…). Choosing the construction type is a project-level
+# call made in the BEP, not something a model parameter can tell you. This table
+# pins that call in one reviewable place:
+#
+#   ASSUMPTION (per project BEP, confirmed by the BIM manager 2026-08-19):
+#   construction Type IB → Table 601 requires 2 hours on the primary structural
+#   frame (columns, girders, beams and their bracing). If the project is
+#   re-classified, EXACTLY this file changes — no Python, no rule edits.
+#
+# 1-KEY: the framing member's OWN `Structural Material` (not a host hop).
+#   `Structural Material` is an ElementId-storage TYPE parameter on Structural
+#   Framing, catalogued in `config/param_catalog.2027.yaml` with
+#   `dimension: reference` — so the v1.4-K25 display swap surfaces the human
+#   material name ("Steel") instead of the raw id before this table sees it.
+#   Matched case-insensitively as a string.
+#
+# ROW SEMANTICS
+#   * Steel / Metal - Light Gauge → "2 HR". Unprotected steel has effectively no
+#     inherent rating; Table 601's requirement has to be declared on the member
+#     (and delivered by a tested protection assembly).
+#   * Concrete, Cast-in-Place gray → "NR". NOT "this member is unimportant": a
+#     cast-in-place concrete frame achieves its Table 601 rating through concrete
+#     COVER over the reinforcement (ACI 216.1 / IBC §722 prescriptive tables), so
+#     the rating is a property of the section, not something declared in a Fire
+#     Rating text parameter. Writing "NR" here is the table saying, in the one
+#     vocabulary the engine shares (`fire_rating_units.is_not_rated`), that this
+#     material carries NO Fire-Rating-parameter requirement — every concrete
+#     member therefore PASSES this check, blank parameter included. That is the
+#     intended exemption; the cover check is a separate axis (rebar cover), not
+#     this rule.
+#
+# `<By Category>` IS DELIBERATELY ABSENT. A member whose Structural Material is
+# still "<By Category>" has not had its material decided — and "we don't know what
+# it is made of" is precisely the case where a code rating must NOT be asserted.
+# No row → `required=None` → manual_review WHEN the member carries a Fire Rating
+# value. MEASURED CAVEAT (run-c23396fb): on this model all 28 such members ALSO
+# have a blank Fire Rating, and QC's bucket order puts missing_data first ("no
+# value → can't say whether it would have complied"), so they land in
+# missing_data, distinguishable in the trace by `operand: null`. They would
+# surface as manual_review only once someone types a rating on them.
+#
+# HONESTY NOTE ON THE `exempt` OUTCOME (2026-08-19): the engine's dedicated
+# `exempt` flag is reachable only from a `fire_rating`-dimension KEY carrying a
+# not-rated sentinel (`lookup_table.LookupTable.match`); a ROW cannot declare
+# itself exempt. This table is keyed on a material NAME, so the concrete rows
+# land in the report as `compliant` with `required: "NR"` — same PASS set, same
+# auditable reason, one flag less. Don't read the concrete rows as "checked and
+# found rated".
+
+name: ibc601_frame
+description: >
+  IBC Table 601 — fire-resistance rating required of the primary structural frame,
+  by the member's own Structural Material. Assumes construction Type IB (2 HR) per
+  the project BEP. "NR" = no Fire Rating parameter requirement for that material.
+
+keys:
+  - { param: Structural Material, dimension: string }
+
+rows:
+  # ── steel frame: the requirement is declared on the member ────────────────
+  - { when: ["Steel"],                        require: "2 HR" }
+  - { when: ["Metal - Light Gauge"],          require: "2 HR" }
+  # ── cast-in-place concrete: rating comes from cover (ACI 216.1), not a param
+  - { when: ["Concrete, Cast-in-Place gray"], require: "NR" }
+  # `<By Category>` intentionally has NO row → manual_review (see the header).

@@ -1,0 +1,30 @@
+scenario: duct_mark_naming
+target_category: Ducts
+rules:
+- id: ducts.mark.required
+  parameter: Mark
+  requirement: present_and_nonempty
+  category: Ducts
+  severity_tag: missing_required_param
+  description: |
+    Every duct must carry a Mark following the firm naming convention
+    "<Space>-<Level>-<System>-<NN>"
+    (e.g. "Live/Work Unit 202-L2-Mechanical Return Air 1-01").
+    Space = containing MEP Space; Level = Reference Level; System = System
+    Name; NN = 01,02,… sequence within each (Space, Level, System) group.
+  # v1.4-K3 closed loop: missing Mark → compute the structured value →
+  # write it to Revit (Path B). Ducts whose centroid maps to no space yield
+  # no value → route to a Path A ACC Issue for human naming instead.
+  fixability: auto
+  autofill:
+    strategy: compose_template
+    template: "{_containing_space}-{Reference Level}-{System Name}-{seq}"
+    sequence_scope:
+    - _containing_space
+    - Reference Level
+    - System Name
+  remediation:
+    action: set_parameter
+    target_parameter: Mark
+    new_value_strategy: inferred
+geometry_rules: []

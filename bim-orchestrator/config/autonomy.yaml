@@ -1,0 +1,42 @@
+# Tiered autonomy policy
+# Resolves: given a proposed mutation, is it auto / approve-required / human-only?
+#
+# Levels:
+#   auto         — Design Agent executes after dry-run preview, no human gate
+#   approve      — Routes to Mission Control approval inbox (Phase 2: ACC Issue)
+#   human-only   — Agent never executes; only proposes for manual action
+
+mutations:
+  parameters:
+    set_value:
+      severity_low: auto       # missing optional metadata, safe defaults
+      severity_medium: approve # missing required project params -- gate on humans
+      # NOTE: For live Snowdon demo, temporarily flip to `auto` to let
+      # Department auto-fill execute path B without approval gating.
+      severity_high: approve   # changes to load-bearing, fire rating, etc.
+  elements:
+    rename: auto               # naming convention only
+    create: approve            # new sheets, views, rooms
+    delete: human-only         # never
+  documents:
+    create_issue: auto         # ACC Issues are safe — they're just records
+    add_comment: auto
+
+# Severity classification rules
+# QC Agent tags each finding with one of these severities based on rule metadata
+severity_rules:
+  missing_required_param: severity_medium
+  missing_optional_param: severity_low
+  invalid_value_range: severity_medium
+  structural_param_change: severity_high
+  fire_safety_change: severity_high
+  # Phase 2 Week 6 — Room compliance
+  geometric_violation: severity_high       # area / width / height — needs human
+  duplicate_identifier: severity_medium    # room numbering collisions
+  # Phase 3 (P3-1) — IFC audit axes. Path A only (no auto-fix exists for
+  # geometry/LOD); high so the ACC issue is never buried.
+  lod_violation: severity_high             # detected LOD below required
+  spatial_violation: severity_high         # corridor/headroom/turning/door fail
+  # v1.4-K9 — naming convention. Medium so a rename write-back is APPROVE-gated
+  # (renaming families/types is higher-risk than a metadata fill → never auto).
+  naming_violation: severity_medium

@@ -1,0 +1,4 @@
+# Spec PDFs are FETCHED (see fetch.sh), never committed — same pattern as
+# vendor/forma-mcp/forma-mcp.exe. They are large third-party binaries and
+# re-downloadable from the public URLs in README.md.
+*.pdf

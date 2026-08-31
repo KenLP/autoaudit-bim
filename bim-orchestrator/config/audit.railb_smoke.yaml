@@ -1,0 +1,25 @@
+# Rail-B smoke profile (SPEC_SCHEDULED_AUDIT_DELTA.md §nghiệm thu → Rail B,
+# items 1-4). `mode: demo` dispatches audit() to the mock Demo Villa clients —
+# zero network, no Revit, no ACC — so the scheduled-audit path (service →
+# POST /audits → run folder → profile.json + delta.md) can be smoke-tested on
+# any machine. `propose_only: true` is what makes this a Mức-1 rehearsal: every
+# would-be-`auto` Path B write is demoted to `approve`, so an unattended
+# nightly never writes to the model on its own.
+#
+# Run:  pwsh scripts/scheduled_audit.ps1 -ProfilePath <abs path to this file>
+name: railb_smoke
+rules:
+  - rules.demo.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: demo
+  max_elements: 300
+  max_issues: 10
+  dry_run: false
+  propose_only: true
+unattended:
+  enabled: false

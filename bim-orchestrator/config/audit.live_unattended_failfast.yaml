@@ -1,0 +1,30 @@
+# LIVE fail-fast probe — SPEC_LIVE_COMBINED §Khối A item 4.
+# Identical to audit.live_unattended.yaml EXCEPT revit_version: 2026, which
+# resolves to port 7891. Revit 2027 is running (addin on 7892), so nothing
+# answers on 7891 — the `--phase wait` step must time out, raise
+# UnattendedLaunchError, terminate the watchdog it just spawned, and ABORT the
+# dispatch rather than limping into run_revit and failing later with a
+# confusing MCP error deep in the graph (the v1.7-3bP2 behaviour that had
+# never been observed live).
+#
+# The exe stays 2027 on purpose: with Revit already running, `is_running()`
+# short-circuits the launch, so this probe exercises the WAIT half only.
+name: live_unattended_failfast
+rules:
+  - rules.demo.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 300
+  max_issues: 10
+  dry_run: true
+  propose_only: true
+unattended:
+  enabled: true
+  revit_exe: "C:/Program Files/Autodesk/Revit 2027/Revit.exe"
+  model_path: "C:/models/your_local_model.rvt"
+  revit_version: 2026        # ← deliberate mismatch: port 7891, nobody home

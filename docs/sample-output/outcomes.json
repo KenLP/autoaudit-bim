@@ -1,0 +1,497 @@
+{
+  "outcomes_summary": {
+    "total": 52,
+    "compliant": 45,
+    "non_compliant": 5,
+    "manual_review": 0,
+    "missing_data": 2,
+    "skipped_out_of_scope": 48
+  },
+  "non_compliant": [
+    {
+      "rule_id": "demo.doors.fire_rating",
+      "element_id": "703",
+      "parameter": "Fire Rating",
+      "severity_tag": "fire_safety_change",
+      "severity": "severity_high",
+      "message": "demo.doors.fire_rating: 36x84 (120 MIN) \u2014 Door Fire Rating must be present (inherit from the host Wall if blank) and formatted as \"X HR\".. Got '120 min' for parameter 'Fire Rating'.",
+      "current_value": "120 min",
+      "suggested_value": "2 HR",
+      "citation": null,
+      "status": "non_compliant",
+      "element_name": "Door-Single-Flush - 36x84 (120 MIN)"
+    },
+    {
+      "rule_id": "demo.doors.fire_rating",
+      "element_id": "704",
+      "parameter": "Fire Rating",
+      "severity_tag": "fire_safety_change",
+      "severity": "severity_high",
+      "message": "demo.doors.fire_rating: 36x84 (120 MIN) \u2014 Door Fire Rating must be present (inherit from the host Wall if blank) and formatted as \"X HR\".. Got '120 min' for parameter 'Fire Rating'.",
+      "current_value": "120 min",
+      "suggested_value": "2 HR",
+      "citation": null,
+      "status": "non_compliant",
+      "element_name": "Door-Single-Flush - 36x84 (120 MIN)"
+    },
+    {
+      "rule_id": "demo.doors.width_min",
+      "element_id": "707",
+      "parameter": "Width",
+      "severity_tag": "geometric_violation",
+      "severity": "severity_high",
+      "message": "demo.doors.width_min: 36x84 Narrow \u2014 Door nominal leaf width must be at least 900 mm (firm standard).. Got '609.6 mm' for parameter 'Width'.",
+      "current_value": "609.6 mm",
+      "suggested_value": null,
+      "citation": null,
+      "status": "non_compliant",
+      "element_name": "Door-Single-Flush - 36x84 Narrow"
+    },
+    {
+      "rule_id": "demo.rooms.number_unique",
+      "element_id": "402",
+      "parameter": "Number",
+      "severity_tag": "duplicate_identifier",
+      "severity": "severity_medium",
+      "message": "demo.rooms.number_unique: Living Room \u2014 Room numbers must be unique across the project.. Got '101' for parameter 'Number'.",
+      "current_value": "101",
+      "suggested_value": null,
+      "citation": null,
+      "status": "non_compliant",
+      "element_name": "Living Room"
+    },
+    {
+      "rule_id": "demo.rooms.number_unique",
+      "element_id": "403",
+      "parameter": "Number",
+      "severity_tag": "duplicate_identifier",
+      "severity": "severity_medium",
+      "message": "demo.rooms.number_unique: Dining Room \u2014 Room numbers must be unique across the project.. Got '101' for parameter 'Number'.",
+      "current_value": "101",
+      "suggested_value": null,
+      "citation": null,
+      "status": "non_compliant",
+      "element_name": "Dining Room"
+    }
+  ],
+  "manual_review_items": [],
+  "missing_data_items": [
+    {
+      "rule_id": "demo.doors.fire_rating",
+      "element_id": "701",
+      "parameter": "Fire Rating",
+      "severity_tag": "fire_safety_change",
+      "severity": "severity_high",
+      "message": "demo.doors.fire_rating: 36x84 (Blank FR) \u2014 Door Fire Rating must be present (inherit from the host Wall if blank) and formatted as \"X HR\".. Got '' for parameter 'Fire Rating'.",
+      "current_value": "",
+      "suggested_value": "2 HR",
+      "citation": null,
+      "status": "missing_data",
+      "element_name": "Door-Single-Flush - 36x84 (Blank FR)",
+      "inherited_from": "2 HR"
+    },
+    {
+      "rule_id": "demo.doors.fire_rating",
+      "element_id": "702",
+      "parameter": "Fire Rating",
+      "severity_tag": "fire_safety_change",
+      "severity": "severity_high",
+      "message": "demo.doors.fire_rating: 36x84 (Blank FR) \u2014 Door Fire Rating must be present (inherit from the host Wall if blank) and formatted as \"X HR\".. Got '' for parameter 'Fire Rating'.",
+      "current_value": "",
+      "suggested_value": "2 HR",
+      "citation": null,
+      "status": "missing_data",
+      "element_name": "Door-Single-Flush - 36x84 (Blank FR)",
+      "inherited_from": "2 HR"
+    }
+  ],
+  "proposed_fixes": [
+    {
+      "finding_id": "demo.doors.fire_rating::703",
+      "element_id": "703",
+      "parameter": "Fire Rating",
+      "new_value": "2 HR",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 9102,
+          "parameterName": "Fire Rating",
+          "changeSummary": "Set 'Fire Rating' on element 9102: '120 min' \u2192 '2 HR'",
+          "changes": {
+            "before": "120 min",
+            "after": "2 HR"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 9102,
+        "old_value": "120 min",
+        "old_value_raw": "120 min",
+        "inherited_from": null,
+        "rule_id": "demo.doors.fire_rating",
+        "action": "set_parameter",
+        "target": "type",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0001",
+        "proposal_origin": "reused_parked",
+        "proposal_note": "already parked (previous run) \u2014 awaiting approval"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "demo.doors.mark_naming::705",
+      "element_id": "705",
+      "parameter": "Mark",
+      "new_value": "D_105",
+      "autonomy": "auto",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 705,
+          "parameterName": "Mark",
+          "changeSummary": "Set 'Mark' on element 705: 'D 105' \u2192 'D_105'",
+          "changes": {
+            "before": "D 105",
+            "after": "D_105"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 705,
+        "old_value": "D 105",
+        "old_value_raw": "D 105",
+        "inherited_from": null,
+        "rule_id": "demo.doors.mark_naming",
+        "action": "set_parameter",
+        "target": "instance",
+        "host_conflict": null,
+        "executed_via": "revit_batch"
+      },
+      "executed": true
+    },
+    {
+      "finding_id": "demo.rooms.number_unique::402",
+      "element_id": "402",
+      "parameter": "Number",
+      "new_value": "101A",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 402,
+          "parameterName": "Number",
+          "changeSummary": "Set 'Number' on element 402: '101' \u2192 '101A'",
+          "changes": {
+            "before": "101",
+            "after": "101A"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 402,
+        "old_value": "101",
+        "old_value_raw": "101",
+        "inherited_from": null,
+        "rule_id": "demo.rooms.number_unique",
+        "action": "set_parameter",
+        "target": "instance",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0002",
+        "proposal_origin": "reused_parked",
+        "proposal_note": "already parked (previous run) \u2014 awaiting approval"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "demo.rooms.number_unique::403",
+      "element_id": "403",
+      "parameter": "Number",
+      "new_value": "101B",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 403,
+          "parameterName": "Number",
+          "changeSummary": "Set 'Number' on element 403: '101' \u2192 '101B'",
+          "changes": {
+            "before": "101",
+            "after": "101B"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 403,
+        "old_value": "101",
+        "old_value_raw": "101",
+        "inherited_from": null,
+        "rule_id": "demo.rooms.number_unique",
+        "action": "set_parameter",
+        "target": "instance",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0002",
+        "proposal_origin": "reused_parked",
+        "proposal_note": "already parked (previous run) \u2014 awaiting approval"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "demo.doors.fire_rating::701",
+      "element_id": "701",
+      "parameter": "Fire Rating",
+      "new_value": "2 HR",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 9101,
+          "parameterName": "Fire Rating",
+          "changeSummary": "Set 'Fire Rating' on element 9101: '' \u2192 '2 HR'",
+          "changes": {
+            "before": "",
+            "after": "2 HR"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 9101,
+        "old_value": "",
+        "old_value_raw": "",
+        "inherited_from": "2 HR",
+        "rule_id": "demo.doors.fire_rating",
+        "action": "set_parameter",
+        "target": "type",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0001",
+        "proposal_origin": "reused_parked",
+        "proposal_note": "already parked (previous run) \u2014 awaiting approval"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "demo.rooms.department_required::401",
+      "element_id": "401",
+      "parameter": "Department",
+      "new_value": "General",
+      "autonomy": "auto",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 401,
+          "parameterName": "Department",
+          "changeSummary": "Set 'Department' on element 401: 'None' \u2192 'General'",
+          "changes": {
+            "before": null,
+            "after": "General"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 401,
+        "old_value": null,
+        "old_value_raw": null,
+        "inherited_from": null,
+        "rule_id": "demo.rooms.department_required",
+        "action": "set_parameter",
+        "target": "instance",
+        "host_conflict": null,
+        "executed_via": "revit_batch"
+      },
+      "executed": true
+    },
+    {
+      "finding_id": "rulegroup::demo.doors.width_min::non_compliant",
+      "element_id": "707",
+      "parameter": "Width",
+      "new_value": null,
+      "autonomy": "auto",
+      "approval_token": "appr_mock_0001",
+      "preview": {
+        "approval_token": "appr_mock_0001",
+        "method": "POST",
+        "url": "https://mock/projects/demo-villa-simulated/issues",
+        "body": {
+          "title": "[AutoAudit] Doors -- demo.doors.width_min (1 non-compliant)",
+          "issueSubtypeId": "subtype-quality"
+        },
+        "sideEffects": [
+          "Create 1 issue titled '[AutoAudit] Doors -- demo.doors.width_min (1 non-compliant)'"
+        ],
+        "businessRulesPassed": [
+          "issue_subtype_id_exists_in_project"
+        ],
+        "grouped_rule_ids": [
+          "demo.doors.width_min"
+        ],
+        "grouped_count": 1,
+        "executed_issue": {
+          "id": "issue-mock-0001",
+          "displayId": 1001,
+          "title": "[AutoAudit] Doors -- demo.doors.width_min (1 non-compliant)",
+          "description": "## `demo.doors.width_min`\n\n**Parameter:** `Width`\n**Requirement:** Rule `demo.doors.width_min` requirement `numeric_compare`\n**Status:** non_compliant\n**Severity:** HIGH\n**Affected elements:** 1\n\n| element id | name | current |\n|---|---|---|\n| `707` | 36x84 Narrow | 2.0 |\n\n---\n_Auto-generated by bim-orchestrator. Manual review (not auto-fixable). Trust pipeline: dry-run -> token -> execute._",
+          "status": "open"
+        }
+      },
+      "executed": true
+    },
+    {
+      "finding_id": "demo.doors.fire_rating::703",
+      "element_id": "703",
+      "parameter": "Fire Rating",
+      "new_value": "2 HR",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 9102,
+          "parameterName": "Fire Rating",
+          "changeSummary": "Set 'Fire Rating' on element 9102: '120 min' \u2192 '2 HR'",
+          "changes": {
+            "before": "120 min",
+            "after": "2 HR"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 9102,
+        "old_value": "120 min",
+        "old_value_raw": "120 min",
+        "inherited_from": null,
+        "rule_id": "demo.doors.fire_rating",
+        "action": "set_parameter",
+        "target": "type",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0001",
+        "proposal_origin": "reused_this_run",
+        "proposal_note": "already proposed this run (duplicate fingerprint)"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "demo.rooms.number_unique::402",
+      "element_id": "402",
+      "parameter": "Number",
+      "new_value": "101A",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 402,
+          "parameterName": "Number",
+          "changeSummary": "Set 'Number' on element 402: '101' \u2192 '101A'",
+          "changes": {
+            "before": "101",
+            "after": "101A"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 402,
+        "old_value": "101",
+        "old_value_raw": "101",
+        "inherited_from": null,
+        "rule_id": "demo.rooms.number_unique",
+        "action": "set_parameter",
+        "target": "instance",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0002",
+        "proposal_origin": "reused_this_run",
+        "proposal_note": "already proposed this run (duplicate fingerprint)"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "demo.rooms.number_unique::403",
+      "element_id": "403",
+      "parameter": "Number",
+      "new_value": "101B",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 403,
+          "parameterName": "Number",
+          "changeSummary": "Set 'Number' on element 403: '101' \u2192 '101B'",
+          "changes": {
+            "before": "101",
+            "after": "101B"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 403,
+        "old_value": "101",
+        "old_value_raw": "101",
+        "inherited_from": null,
+        "rule_id": "demo.rooms.number_unique",
+        "action": "set_parameter",
+        "target": "instance",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0002",
+        "proposal_origin": "reused_this_run",
+        "proposal_note": "already proposed this run (duplicate fingerprint)"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "demo.doors.fire_rating::701",
+      "element_id": "701",
+      "parameter": "Fire Rating",
+      "new_value": "2 HR",
+      "autonomy": "approve",
+      "approval_token": null,
+      "preview": {
+        "ok": true,
+        "data": {
+          "id": 9101,
+          "parameterName": "Fire Rating",
+          "changeSummary": "Set 'Fire Rating' on element 9101: '' \u2192 '2 HR'",
+          "changes": {
+            "before": "",
+            "after": "2 HR"
+          }
+        },
+        "dryRun": true,
+        "committed": false,
+        "write_eid": 9101,
+        "old_value": "",
+        "old_value_raw": "",
+        "inherited_from": "2 HR",
+        "rule_id": "demo.doors.fire_rating",
+        "action": "set_parameter",
+        "target": "type",
+        "host_conflict": null,
+        "proposal_issue_id": "issue-mock-0001",
+        "proposal_origin": "reused_this_run",
+        "proposal_note": "already proposed this run (duplicate fingerprint)"
+      },
+      "executed": false
+    },
+    {
+      "finding_id": "rulegroup::demo.doors.width_min::non_compliant",
+      "element_id": "707",
+      "parameter": "Width",
+      "new_value": null,
+      "autonomy": "auto",
+      "approval_token": null,
+      "preview": {
+        "grouped_rule_ids": [
+          "demo.doors.width_min"
+        ],
+        "grouped_count": 1,
+        "skipped_duplicate": true
+      },
+      "executed": false
+    }
+  ]
+}

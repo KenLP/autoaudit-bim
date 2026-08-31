@@ -1,0 +1,52 @@
+# IRC R304.1 — minimum floor area of a HABITABLE room (2026-08-18).
+#
+# Written for the Pacific Continental Residence sample, which is a
+# one-family dwelling: that building type is governed by the **IRC**, not the
+# IBC. (Saying so is itself the professional answer to "which IBC applies?" —
+# none of them do.)
+#
+# IRC R304.1: "Habitable rooms shall have a floor area of not less than 70
+# square feet." Exception: kitchens. R304.2 adds a 7 ft minimum horizontal
+# dimension, checked by its own rule.
+#
+# THE TABLE IS THE CLASSIFICATION DECISION, WRITTEN DOWN. IRC applies the
+# 70 sf floor to HABITABLE rooms only — and "habitable" is a judgement about
+# each room's use (IRC R202: a space for living, sleeping, eating or cooking;
+# bathrooms, closets, halls, storage and utility spaces are NOT habitable).
+# Rather than hide that judgement in code, every room name in the model gets
+# an explicit row: 70 where the code applies, 0 where it does not. A reviewer
+# can read this file and disagree with one line.
+#
+# `Nook` is DELIBERATELY absent. A breakfast nook may be habitable space (it
+# is for eating) or an alcove of the kitchen — that is exactly the call a
+# licensed person makes, so the engine routes it to manual_review instead of
+# guessing. On this model the answer decides a violation: the Nook measures
+# 14.7 sf and 2.5 ft wide.
+
+name: irc_room_min_area
+description: IRC R304.1 — minimum floor area (sq ft) by room name; 0 = not a habitable room.
+
+keys:
+  - { param: Name, dimension: string }
+
+rows:
+  # ── habitable (IRC R202): living, sleeping, eating, cooking ──────────────
+  - { when: ["Bedroom 1"],      require: "70" }
+  - { when: ["Bedroom 2"],      require: "70" }
+  - { when: ["Bedroom 3"],      require: "70" }
+  - { when: ["Primary Bedroom"], require: "70" }
+  - { when: ["Great Room"],     require: "70" }
+  - { when: ["Dining"],         require: "70" }
+  # R304.1 exception: kitchens are exempt from the 70 sf minimum.
+  - { when: ["Kitchen"],        require: "0" }
+  # ── NOT habitable per IRC R202 — no minimum area applies ────────────────
+  - { when: ["Entry"],          require: "0" }
+  - { when: ["Hallway"],        require: "0" }
+  - { when: ["Corridor"],       require: "0" }
+  - { when: ["Bathroom 1"],     require: "0" }
+  - { when: ["Bathroom 2"],     require: "0" }
+  - { when: ["Primary Bathroom"], require: "0" }
+  - { when: ["Closet"],         require: "0" }
+  - { when: ["Primary Walk-in Closet"], require: "0" }
+  - { when: ["Laundry / Mud Room"], require: "0" }
+  # `Nook` intentionally has NO row → manual_review (see the header).

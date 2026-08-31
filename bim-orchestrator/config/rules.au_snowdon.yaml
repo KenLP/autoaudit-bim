@@ -1,0 +1,165 @@
+# AU 2026 Beat 3 — live ruleset for the R27 Snowdon Towers sample model.
+#
+# WHY THIS IS A SEPARATE FILE FROM rules.demo.yaml
+# ------------------------------------------------
+# One ruleset cannot serve both models, and `mark_naming` is the proof.
+# `rules.demo.yaml` is built AROUND the Demo Villa fixture: eleven doors are
+# already canonical `D_101`..`D_112` and door 705 carries `"D 105"` — a
+# deliberate separator violation so the K16 `auto` normalizer visibly repairs
+# it. That is the only place in the whole demo where auto-normalize NAMING is
+# seen working, and it is Beat 0's showpiece. Retuning that pattern for
+# Snowdon would delete it.
+#
+# Measured on Snowdon 2026-08-05 with the Demo Villa pattern (`^D_\d{3}$`):
+# 149 of 149 doors fail and NOT ONE produces a suggested value, because no
+# deterministic transform turns `S10` into `D_105`. So the rule advertised a
+# Path B auto-fix and delivered 149 Path A findings — and "every door in your
+# model is wrong" reads from the stage as a broken rule, not a dirty model.
+#
+# The other four rules are byte-identical to rules.demo.yaml. Only the naming
+# pattern differs. If you change one of the four, change it in both.
+
+scenario: au_snowdon
+target_category: [Doors, Rooms]
+metadata:
+  source: "AU 2026 Beat 3 — live run against R27_Snowdon Towers Sample Architectural"
+  note: >-
+    Derived from rules.demo.yaml. Identical except demo.doors.mark_naming's
+    pattern, which is tuned to Snowdon's actual door-numbering convention
+    (measured across all 149 doors, not guessed).
+
+rules:
+  # ── Doors: Fire Rating must be present (inherit from host Wall when
+  #    empty) AND in canonical "X HR" format — v1.4-K22 compound autofill.
+  #    The richest rule in the set on this model: 98 findings, 76 of which
+  #    carry a computed value ("180 MIN" -> "3 HR") and 22 of which do not,
+  #    so ONE rule demonstrates the whole value-availability routing split.
+  - id: demo.doors.fire_rating
+    parameter: Fire Rating
+    requirement: canonical_format
+    category: Doors
+    severity_tag: fire_safety_change
+    severity_level: severity_high
+    description: >-
+      Door Fire Rating must be present (inherit from the host Wall if
+      blank) and formatted as "X HR".
+    fixability: auto
+    autofill:
+      strategy: inherit_then_normalize
+      normalize_kind: duration
+      normalize_format: "{h} HR"
+    remediation:
+      action: set_parameter
+      target: auto
+
+  # ── Doors: nominal leaf width >= 900mm (FIRM standard, not a code citation).
+  #    A-5 (review round 7, 2026-08-16): `Width` is the type-level NOMINAL leaf
+  #    width — NOT the clear opening IBC 1010.1.1 regulates (32 in = 813 mm
+  #    clear; a 914 mm nominal door can fail that), and this rule has no egress
+  #    scope filter. So it claims exactly what it checks: an internal width
+  #    floor on the nominal param. For the real clear-width pattern, see
+  #    `rules.bca_stair_run_clear_width.yaml` (bound_parameter on a measured
+  #    param). Geometric — a human must widen the opening, so this is manual →
+  #    Path A ACC Issue.
+  #    13 findings on Snowdon, and the ONE rule whose auto-created Revit
+  #    schedule was measured agreeing with the engine element-for-element
+  #    (13/13, 2026-08-05) — the strongest evidence moment in Beat 3/5.
+  - id: demo.doors.width_min
+    parameter: Width
+    requirement: numeric_compare
+    operator: ">="
+    threshold: 900
+    unit: mm
+    category: Doors
+    severity_tag: geometric_violation
+    description: Door nominal leaf width must be at least 900 mm (firm standard).
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue
+      comments_template: "Snowdon: door width {value} mm < 900 mm minimum"
+
+  # ── Doors: Mark follows the firm's door-numbering standard.
+  #
+  #    THE PATTERN IS MEASURED, NOT INVENTED. All 149 Snowdon door Marks were
+  #    read live and grouped by shape (digits collapsed to N):
+  #      NNNA 35 · NNNB 33 · NNNC 16 · NNND 9 · NNNE 2 · NNNF 1  (room+letter)
+  #      SNN 16 · SNNA 3 · SNNB 3                                (stairs)
+  #      NNNOPN 9 · NCNN 6 · PNN 5 · RNNN[A-E] 7 · NNN 3 · NNN.N 1
+  #    The standard this encodes: a door is numbered after the room it serves
+  #    with an optional suffix letter, and stair doors take an S + level form.
+  #    Those are the two families a real door schedule specifies.
+  #
+  #    Result: 121 pass / 28 fail (81%). The 28 are the families the standard
+  #    never covered — openings (OPN), parking (P), retail (R), corridor (3C).
+  #    That is the honest audit outcome and the conversation worth having on
+  #    stage: fix the doors, or amend the standard to name those families.
+  #
+  #    ROUTING, stated because the old runbook got it wrong: on THIS model the
+  #    rule produces NO auto-fixes — no deterministic transform turns `P02`
+  #    into a room number. `normalize_kind: auto` is kept anyway because it is
+  #    the correct declaration (K16: declare the pattern, let the engine try),
+  #    and it still repairs the separator/case violations it is meant to catch
+  #    if any appear. Findings without a computable value route to Path A,
+  #    which is the design working, not failing.
+  - id: demo.doors.mark_naming
+    parameter: Mark
+    requirement: matches_regex
+    pattern: "^(\\d{3}[A-Z]?|S\\d{2}[A-Z]?)$"
+    category: Doors
+    severity_tag: naming_violation
+    severity_level: severity_low
+    description: >-
+      Door Mark must follow the numbering standard: the room number with an
+      optional suffix letter (e.g. 102A), or S + level for stair doors
+      (e.g. S10, S11A).
+    fixability: auto
+    autofill:
+      strategy: normalize
+      normalize_kind: auto
+    remediation:
+      action: set_parameter
+      target: instance
+
+  # ── Rooms: Department must be present. Fixed literal "General" — a
+  #    deterministic compose_template with no tokens, so all 67 findings on
+  #    Snowdon carry a value and route Path B.
+  - id: demo.rooms.department_required
+    parameter: Department
+    requirement: present_and_nonempty
+    category: Rooms
+    severity_tag: missing_optional_param
+    severity_level: severity_low
+    description: Every room must carry a non-empty Department value.
+    fixability: auto
+    autofill:
+      strategy: compose_template
+      template: "General"
+    remediation:
+      action: set_parameter
+      target_parameter: Department
+      new_value_strategy: inferred
+      target: instance
+
+  # ── Rooms: Number must be unique. 67/67 PASS on Snowdon — kept precisely
+  #    BECAUSE it passes: the verification report's PASS set is the
+  #    false-negative defence, and a run where every rule finds something
+  #    proves nothing about the rules that should find nothing.
+  - id: demo.rooms.number_unique
+    parameter: Number
+    requirement: unique_in_set
+    category: Rooms
+    severity_tag: duplicate_identifier
+    description: Room numbers must be unique across the project.
+    fixability: auto
+    autofill:
+      strategy: none
+    remediation:
+      action: set_parameter
+      target_parameter: Number
+      new_value_strategy: next_available
+      comments_template: "Snowdon: renumbered from '{old_value}' -- duplicate Number"
+      target: instance
+
+geometry_rules: []

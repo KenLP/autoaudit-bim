@@ -1,0 +1,48 @@
+# IBC §716 — fire WINDOW assembly rating required by the wall it sits in.
+#
+# Sibling of lookup.ibc716.yaml (doors): same table-driven relational mechanism,
+# DIFFERENT code table — IBC 2021 Table 716.1(3), Fire Window Assembly Ratings.
+# Transcribed 2026-08-18 from the verified table in
+# Internal code-lookup notes §2 (checked against SAFTI FIRST's verbatim
+# transcription of the 2021 table; values unchanged in 2024). Authored for the
+# AU Case 2 demo: same lookup engine, zero doors on screen.
+#
+# 2-KEY, both REAL params on the Snowdon sample walls (no seeding):
+#   key 1 `host.Fire Rating` — wall fire-resistance rating (built-in type param)
+#   key 2 `host.Function`    — Revit's BUILT-IN wall Function (Interior /
+#                              Exterior / Core-shaft / …) — unlike the doors
+#                              table's project-specific "Fire Function", this
+#                              axis ships with every Revit wall type.
+#
+# Row semantics (Table 716.1(3)):
+#   * 1-hr walls (interior or exterior) → 3/4-hr (45 min) window
+#   * 0.5-hr walls                      → 1/3-hr (20 min) window
+#   * EXTERIOR walls over 1 hr          → 1-1/2-hr (90 min) window
+#   * INTERIOR walls over 1 hr: fire-protection-rated glazing is NOT PERMITTED
+#     (fire-RESISTANCE-rated glazing only, a different product class) —
+#     DELIBERATELY no row, so the engine routes it to manual_review: "openings
+#     of this class are not allowed here" is a human conversation, not a value.
+#   * Function values with no row (Core-shaft, Foundation, …) on a rated wall
+#     → manual_review; not-rated wall ("NR") → exempt; blank rating → manual
+#     (B-4: not recorded ≠ no requirement).
+
+name: ibc716_windows
+description: IBC 2021 Table 716.1(3) — fire window assembly rating required by host wall function × rating.
+
+keys:
+  - { param: host.Fire Rating, dimension: fire_rating }
+  - { param: host.Function,    dimension: string }
+
+rows:
+  # 1-hour walls → 3/4-hr window, interior or exterior
+  - { when: ["1 HR", "Interior"],   require: "45 min" }
+  - { when: ["1 HR", "Exterior"],   require: "45 min" }
+  # half-hour walls → 1/3-hr window
+  - { when: ["0.5 HR", "Interior"], require: "20 min" }
+  - { when: ["0.5 HR", "Exterior"], require: "20 min" }
+  # EXTERIOR walls over 1 hour → 1-1/2-hr window
+  - { when: ["1.5 HR", "Exterior"], require: "90 min" }
+  - { when: ["2 HR", "Exterior"],   require: "90 min" }
+  - { when: ["3 HR", "Exterior"],   require: "90 min" }
+  - { when: ["4 HR", "Exterior"],   require: "90 min" }
+  # INTERIOR walls over 1 hour: no row ON PURPOSE (not permitted → manual review).

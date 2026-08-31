@@ -1,0 +1,31 @@
+# Case 3 (HVAC) recording profile — 2026-08-26.
+#
+# TWO settings here are load-bearing; both were learned the hard way tonight.
+#
+# max_elements: 1000 — the model has 960 ducts and the default 300 CAPS SET A
+# BEFORE the raycast runs. Ken's parking ducts carry high ids (155xxxx), so at
+# 300 they are never measured and the scoped rule reports a truthful-looking
+# ZERO. Measured: cap 300 -> 54 raw clashes, none of them in Parking -> 0
+# findings; cap 1000 -> the 5 real ones.
+#
+# propose_only: true — the Mark rule's compose_template autofill is
+# deterministic, so under a plain run K4 Opt B auto-applies it: that is how 119
+# Marks got written into the Plumbing model unattended. Here it would be 895.
+# The demo says "proposals wait for a person"; this flag is what makes that true.
+name: case3_hvac
+rules:
+  - rules.duct_mark.yaml
+  - rules.duct_parking_headroom.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: run_revit
+  max_elements: 1000
+  max_issues: 10
+  dry_run: false
+  propose_only: true
+unattended:
+  enabled: false

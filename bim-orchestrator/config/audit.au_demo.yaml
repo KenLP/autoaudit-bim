@@ -1,0 +1,21 @@
+# AutoAudit UI pilot-preview profile for AU 2026 (SPEC_AU_DEMO_PACKAGE.md,
+# "Added items" section, item 1). `mode: demo` dispatches audit() to the SAME
+# orchestration loop as `--demo` — mock Demo Villa Revit + Forma clients,
+# zero network, deterministic — so the UI's Run drawer (POST /api/audits)
+# can start a stage-safe run. Loads cleanly on any machine (axes disabled,
+# rules path resolves profile-dir-first).
+name: au_demo
+rules:
+  - rules.demo.yaml
+axes:
+  lod:
+    enabled: false
+  spatial:
+    enabled: false
+run:
+  mode: demo
+  max_elements: 300
+  max_issues: 10
+  dry_run: false
+unattended:
+  enabled: false

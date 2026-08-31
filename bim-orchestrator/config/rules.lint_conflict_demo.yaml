@@ -1,0 +1,65 @@
+# D6 / Beat-2 spice (2026-08-18) — a DELIBERATELY conflicting pair, kept in
+# its own file so it is NEVER merged into a real run.
+#
+# SESSION_PREP Beat 2 has warned since 05/08: "a completely clean lint gives
+# you nothing to point at — prepare a deliberately conflicting rule in a side
+# file, run the lint a second time, let the audience watch it get caught,
+# then take it back out." This is that file. And since B-1 (2026-08-17) the
+# lint actually SEES this class: both rules write Rooms.Number via
+# `new_value_strategy: next_available` (autofill "none"), the exact footprint
+# that used to be invisibly empty.
+#
+#   uv run bim-orchestrator --lint-rules --rules config\rules.lint_conflict_demo.yaml
+#
+# Expected output (captured live 2026-08-18 — exit 1):
+#   ERRORS (2):
+#     {'type': 'write_write_conflict',
+#      'rules': ['demo.rooms.number_unique', 'demo.rooms.renumber_by_level'],
+#      'params': ['Number']}
+#     {'type': 'cycle',
+#      'rules': ['demo.rooms.number_unique', 'demo.rooms.renumber_by_level',
+#                'demo.rooms.number_unique']}
+#   ORDER: (unavailable — a cycle was detected)
+#
+# TWO errors, better than planned: besides the write-write conflict, each
+# rule READS Number (uniqueness / pattern) and the other WRITES it — a
+# genuine A-reopens-B-reopens-A rewriting cycle, caught statically.
+# Say on stage: "two rules, each fine alone, both renumbering the same
+# parameter — fix order would decide which one wins, and each one's fix
+# re-triggers the other. The lint refuses to let production discover that."
+
+scenario: lint_conflict_demo
+target_category: Rooms
+rules:
+  # Rule A — the real demo rule, verbatim shape from rules.demo.yaml.
+  - id: demo.rooms.number_unique
+    parameter: Number
+    requirement: unique_in_set
+    category: Rooms
+    severity_tag: duplicate_identifier
+    description: Room numbers must be unique across the project.
+    fixability: auto
+    autofill:
+      strategy: none
+    remediation:
+      action: set_parameter
+      target_parameter: Number
+      new_value_strategy: next_available
+      target: instance
+
+  # Rule B — a plausible second author's rule that ALSO renumbers Number.
+  - id: demo.rooms.renumber_by_level
+    parameter: Number
+    requirement: matches_regex
+    pattern: "^\\d{3}[A-Z]?$"
+    category: Rooms
+    severity_tag: naming_violation
+    description: Room numbers must be three digits (renumber to the standard).
+    fixability: auto
+    autofill:
+      strategy: none
+    remediation:
+      action: set_parameter
+      target_parameter: Number
+      new_value_strategy: next_available
+      target: instance

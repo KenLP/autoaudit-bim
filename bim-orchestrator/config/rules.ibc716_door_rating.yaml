@@ -1,0 +1,27 @@
+scenario: ibc716_door_rating
+target_category: Doors
+rules:
+  # IBC §716 — table-driven relational check. The required door fire-protection
+  # rating is a code-table function of the HOST wall's USE × rating (lookup: ibc716),
+  # not equal to it. The table self-declares its host keys (host.Fire Rating +
+  # host.Fire Function); QC looks up the required door rating and compares the door's
+  # actual Fire Rating (>=, fire_rating minutes). A door in a non-rated wall is exempt
+  # (compliant); a rated wall whose rating isn't in the table routes to manual review.
+  - id: doors.fire_rating.ibc716_by_host
+    parameter: Fire Rating
+    requirement: relation_compare
+    category: Doors
+    compare_kind: fire_rating
+    operator: ">="
+    lookup: ibc716
+    severity_tag: rule_violation
+    severity_level: severity_high
+    description: >
+      IBC §716 — a fire door assembly's protection rating must be at least the value
+      required by its host wall's fire-resistance rating (Table 716.1(2), via lookup
+      table 'ibc716'). Doors in non-rated walls are exempt.
+    fixability: manual
+    autofill:
+      strategy: none
+    remediation:
+      action: create_acc_issue

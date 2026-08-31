@@ -1,0 +1,32 @@
+:root {
+  /* light */
+  --bg: #F6F7F9;        --surface: #FFFFFF;   --surface-2: #F0F2F5;
+  --border: #E2E5EA;    --ink: #1B1F24;       --ink-muted: #5C6470;
+  --primary: #1866D1;   --primary-hover: #1254B0; --primary-ink: #FFFFFF;
+  --ok: #1A7F37;  --fail: #C9303E;  --warn: #B96A00;  --info: #6E56CF;
+  --focus-ring: #1866D1;
+  /* buckets */
+  --bucket-compliant: var(--ok);      --bucket-non-compliant: var(--fail);
+  --bucket-manual-review: var(--warn); --bucket-missing-data: var(--info);
+  /* severity */
+  --sev-high: #C9303E;  --sev-medium: #B96A00;  --sev-low: #5C6470;
+  --radius: 6px;
+  --font-ui: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+[data-theme="dark"] {
+  --bg: #14171B;  --surface: #1C2127;  --surface-2: #232932;
+  --border: #2A313A;  --ink: #E7EBF0;  --ink-muted: #98A2B0;
+  --primary: #4C8DFF;  --primary-hover: #6BA1FF;  --primary-ink: #0D1117;
+  --ok: #3FB950;  --fail: #F85149;  --warn: #D29922;  --info: #A371F7;
+}
+
+/* prefers-color-scheme is the default signal; explicit [data-theme] always wins */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171B;  --surface: #1C2127;  --surface-2: #232932;
+    --border: #2A313A;  --ink: #E7EBF0;  --ink-muted: #98A2B0;
+    --primary: #4C8DFF;  --primary-hover: #6BA1FF;  --primary-ink: #0D1117;
+    --ok: #3FB950;  --fail: #F85149;  --warn: #D29922;  --info: #A371F7;
+  }
+}

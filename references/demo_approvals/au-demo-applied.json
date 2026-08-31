@@ -1,0 +1,41 @@
+{
+  "issue_id": "au-demo-applied",
+  "display_id": 9002,
+  "project_id": "demo-villa-simulated",
+  "created_at": "2026-07-12T08:45:00+00:00",
+  "applied": true,
+  "applied_writes": 2,
+  "stale_writes": 0,
+  "applied_at": "2026-07-12T08:47:12+00:00",
+  "status": "applied",
+  "issue_status": "closed",
+  "fingerprint": "au-demo-applied-fixture-fp01",
+  "fixes": [
+    {
+      "finding_id": "demo.rooms.number_unique::402",
+      "element_id": "402",
+      "flagged_instance": "402",
+      "parameter": "Number",
+      "old_value": "101",
+      "new_value": "101A",
+      "value_source": null,
+      "evidence": null,
+      "inherited_from": null,
+      "action": "set_parameter",
+      "applied": true
+    },
+    {
+      "finding_id": "demo.rooms.number_unique::403",
+      "element_id": "403",
+      "flagged_instance": "403",
+      "parameter": "Number",
+      "old_value": "101",
+      "new_value": "101B",
+      "value_source": null,
+      "evidence": null,
+      "inherited_from": null,
+      "action": "set_parameter",
+      "applied": true
+    }
+  ]
+}

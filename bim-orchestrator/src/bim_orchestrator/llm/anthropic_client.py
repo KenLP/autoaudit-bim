@@ -46,6 +46,24 @@ def _is_capability_error(exc: BaseException) -> bool:
     return isinstance(status, int) and 400 <= status < 500 and status != 429
 
 
+def _usage_of(resp: Any) -> tuple[int, int] | None:
+    """``(input_tokens, output_tokens)`` from an SDK response, or None.
+
+    Reads defensively: a stubbed response in tests has no ``usage``, and a
+    future SDK may rename a field — either way the answer is "unknown", never
+    a crash on the accounting path of a call that already succeeded.
+    """
+    usage = getattr(resp, "usage", None)
+    if usage is None:
+        return None
+    try:
+        return int(getattr(usage, "input_tokens", 0) or 0), int(
+            getattr(usage, "output_tokens", 0) or 0
+        )
+    except (TypeError, ValueError):
+        return None
+
+
 class AnthropicLLMClient(LLMClient):
     def __init__(
         self,
@@ -102,6 +120,7 @@ class AnthropicLLMClient(LLMClient):
         # `resp.content[0]` is included on purpose: a 200 with zero content
         # blocks (max_tokens hit, or a refusal) is an IndexError, which is
         # exactly the shape that reaches a caller as "not an LLM problem".
+        self.last_usage = None
         try:
             resp = await self._client().messages.create(
                 model=self._model,
@@ -110,6 +129,7 @@ class AnthropicLLMClient(LLMClient):
                 system=system,
                 messages=[{"role": "user", "content": prompt}],
             )
+            self.last_usage = _usage_of(resp)
             return resp.content[0].text.strip()
         except LLMError:
             raise
@@ -146,6 +166,7 @@ class AnthropicLLMClient(LLMClient):
     async def _complete_json_structured(
         self, *, system: str, prompt: str, schema: dict[str, Any], max_tokens: int
     ) -> dict[str, Any]:
+        self.last_usage = None
         resp = await self._client().messages.create(
             model=self._model,
             max_tokens=max_tokens,
@@ -156,6 +177,7 @@ class AnthropicLLMClient(LLMClient):
                 "format": {"type": "json_schema", "schema": sanitize_json_schema(schema)}
             },
         )
+        self.last_usage = _usage_of(resp)
         text = next(
             (b.text for b in resp.content if getattr(b, "type", None) == "text"), ""
         )

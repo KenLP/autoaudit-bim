@@ -111,6 +111,7 @@ const PHASE_ORDER: AuditPhase[] = [
   "query",
   "qc",
   "design",
+  "llm",
   "record",
   "run",
 ];

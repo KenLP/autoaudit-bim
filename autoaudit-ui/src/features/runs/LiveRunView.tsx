@@ -12,6 +12,7 @@ const PHASES: AuditPhase[] = [
   "query",
   "qc",
   "design",
+  "llm",
   "run",
 ];
 
@@ -21,8 +22,9 @@ const PHASE_ORDER: Record<AuditPhase, number> = {
   query: 2,
   qc: 3,
   design: 4,
-  record: 5,
-  run: 6,
+  llm: 5,
+  record: 6,
+  run: 7,
 };
 
 export interface LiveRunViewProps {

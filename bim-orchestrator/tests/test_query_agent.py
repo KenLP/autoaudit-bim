@@ -250,7 +250,25 @@ async def test_passes_through_all_sample_properties(catalog):
     assert closet["params"]["Name"] == "Closet"
     assert closet["params"]["Number"] == "11A"
     assert closet["params"]["Department"] is None
-    assert closet["params"]["Area"] == 0.83
+    # AECDM reports Area in m²; params carry Revit's storage unit (ft²).
+    # The old assertion (== 0.83) pinned the bug: a raw m² value compared
+    # against rules and lookup tables written in sf.
+    assert closet["params"]["Area"] == pytest.approx(8.934, rel=1e-3)
+
+
+@pytest.mark.asyncio
+async def test_raw_si_values_stay_in_properties(catalog):
+    """Unit normalization touches ``params`` only — the raw AECDM value stays
+    in ``properties`` so a converted number can always be traced back."""
+    mcp = MockFormaMCPClient()
+    rs = make_test_ruleset(target_category="Rooms")
+    agent = QueryAgent(mcp=mcp, element_group_id="eg", rules=rs, catalog=catalog)
+    result = await agent.run(_empty_state())
+
+    closet = next(e for e in result["elements"] if e["id"] == "elem-closet-11a")
+    raw = {p["name"]: p["value"] for p in closet["properties"]}
+    assert raw["Area"] == 0.83
+    assert closet["params"]["Area"] != raw["Area"]
 
 
 # ---- QueryAgent — multi-category target_category (v1.2.2 carryover) -------

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
+import { ProjectCard } from "./ProjectCard";
 import { strings } from "@/strings";
 import {
   useDoctor,
@@ -224,6 +225,8 @@ export function SetupPage() {
           ))}
         </div>
       </div>
+
+      <ProjectCard />
 
       <div className="card flex flex-col gap-3 p-4">
         <div className="text-section-title">{strings.setup.connectionsTitle}</div>

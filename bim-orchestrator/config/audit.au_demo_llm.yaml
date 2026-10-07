@@ -1,0 +1,37 @@
+# AU 2026 — the three-agent clip, run THROUGH the AutoAudit panel.
+#
+# Same orchestration as `audit.au_demo.yaml` (mock Demo Villa Revit + Forma
+# clients, zero network for the model) but with two deliberate differences:
+#
+#   * rules.p2_demo.yaml, not rules.demo.yaml — the default demo ruleset has no
+#     rule declaring `new_value_strategy: llm_propose`, so the Remediation agent
+#     had nothing to do and the clip lost its most important moment
+#     (measured 2026-08-26, notes/AU2026_RUNBOOK_3AGENT.md). p2_demo adds a Type
+#     Mark rule no canonicaliser can repair, which is exactly the lane where a
+#     model may PROPOSE a value.
+#   * `llm:` enables the three agents FOR THIS PROFILE ONLY. The flags used to
+#     live in the process environment, which meant every audit the service ran
+#     — including the ones being recorded for the other beats — paid for 22
+#     model calls and printed an `LLM:` line. A profile is the unit an operator
+#     picks in the panel, so it is the unit that should carry the choice.
+#
+# Requires the private extension installed in this venv
+# (an editable install into the same venv) and
+# ANTHROPIC_API_KEY in .env. Without the extension the run stays deterministic
+# and metadata.json says so (llm_status.wired all false) — it never pretends.
+name: au_demo_llm
+rules:
+  - rules.p2_demo.yaml
+axes:
+  lod: {enabled: false}
+  spatial: {enabled: false}
+run:
+  mode: demo
+  max_elements: 300
+  max_issues: 10
+  dry_run: false
+llm:
+  remediation: true
+  diagnostic: true
+  supervisor: true
+unattended: {enabled: false}

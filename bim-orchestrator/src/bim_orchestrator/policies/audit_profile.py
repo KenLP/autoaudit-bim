@@ -100,12 +100,40 @@ class UnattendedConfig(BaseModel):
     revit_version: int | None = None
 
 
+class LlmAgentsConfig(BaseModel):
+    """Which optional LLM agents THIS profile switches on.
+
+    Mirrors the three process flags (``BIM_LLM_REMEDIATION`` / ``_DIAGNOSTIC``
+    / ``_SUPERVISOR``) but scoped to one run: ``audit()`` sets the flag for the
+    duration of the dispatch and restores it afterwards. ``true`` here turns an
+    agent ON for this run; ``false`` (the default) leaves the process setting
+    alone — so an operator who exported a flag in the shell keeps it, and a
+    profile that says nothing changes nothing. There is deliberately no way to
+    force an agent OFF from a profile: the deterministic path is the default,
+    and a run that wants it simply doesn't ask.
+    """
+
+    remediation: bool = False
+    diagnostic: bool = False
+    supervisor: bool = False
+
+    def env_overrides(self) -> dict[str, str]:
+        """The flags to set for this run — only the ones that are on."""
+        pairs = (
+            ("BIM_LLM_REMEDIATION", self.remediation),
+            ("BIM_LLM_DIAGNOSTIC", self.diagnostic),
+            ("BIM_LLM_SUPERVISOR", self.supervisor),
+        )
+        return {flag: "1" for flag, on in pairs if on}
+
+
 class AuditProfile(BaseModel):
     name: str
     rules: list[str] = Field(default_factory=list)
     axes: AuditAxes = Field(default_factory=AuditAxes)
     run: AuditRunOptions = Field(default_factory=AuditRunOptions)
     unattended: UnattendedConfig = Field(default_factory=UnattendedConfig)
+    llm: LlmAgentsConfig = Field(default_factory=LlmAgentsConfig)
 
 
 def _resolve_relative(raw_path: str, base: Path) -> str:

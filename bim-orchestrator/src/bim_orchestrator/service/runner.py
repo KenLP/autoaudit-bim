@@ -66,6 +66,14 @@ _PHASE_BY_PREFIX = {
     "grounding": "qc",
     "design": "design",
     "route": "design",
+    # The optional AI layer. Left unmapped these rendered as phase "run", whose
+    # UI label is "Finished" — so the live log announced the end of the audit
+    # while the diagnostic agent was still writing. One phase for all three
+    # agents plus the socket's own events (llm.plugin_missing, llm.budget_*).
+    "remediation_llm": "llm",
+    "diagnostic_agent": "llm",
+    "supervisor": "llm",
+    "llm": "llm",
     "run_recorder": "record",
     "service": "service",
 }

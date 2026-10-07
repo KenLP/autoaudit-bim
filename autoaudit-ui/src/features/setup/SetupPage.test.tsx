@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SetupPage } from "./SetupPage";
-import type { HealthResponse, ProfilesResponse, SettingsResponse } from "@/api/types";
+import type {
+  FormaProjectsResponse,
+  HealthResponse,
+  ProfilesResponse,
+  ProjectSelection,
+  SettingsResponse,
+} from "@/api/types";
 
 const HEALTH: HealthResponse = {
   ok: true,
@@ -29,16 +35,37 @@ const SETTINGS: SettingsResponse = {
   llm: { provider: "anthropic" },
 };
 
+const PROJECT_SELECTION: ProjectSelection = {
+  hub_id: "b.hub",
+  project_id: "",
+  aecdm_project_id: "",
+  element_group_id: "",
+  project_name: "",
+  element_group_name: "",
+};
+
+const FORMA_PROJECTS: FormaProjectsResponse = {
+  hub: { id: "urn:hub", name: "Ken's Hub" },
+  projects: [],
+  error: null,
+};
+
 function mockRoutedFetch() {
   globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
     const url = String(input);
-    const body = url.includes("/api/settings")
-      ? SETTINGS
-      : url.includes("/api/health")
-        ? HEALTH
-        : url.includes("/api/profiles")
-          ? PROFILES
-          : {};
+    const body = url.includes("/api/settings/project")
+      ? PROJECT_SELECTION
+      : url.includes("/api/forma/projects")
+        ? FORMA_PROJECTS
+        : url.includes("/api/forma/element-groups")
+          ? { groups: [], error: null }
+          : url.includes("/api/settings")
+            ? SETTINGS
+            : url.includes("/api/health")
+              ? HEALTH
+              : url.includes("/api/profiles")
+                ? PROFILES
+                : {};
     return Promise.resolve({
       ok: true,
       status: 200,
@@ -91,10 +118,15 @@ describe("SetupPage — editable connections", () => {
     expect(input).toHaveAttribute("type", "password");
     await user.type(input, "new-project-id");
 
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    // The Project card has a Save of its own — take the one in the env row
+    // that is currently being edited, not whichever matches the label first.
+    const envRow = input.closest("tr")!;
+    await user.click(within(envRow).getByRole("button", { name: "Save" }));
 
     // ConfirmDialog gates the actual write (visual language #4).
-    expect(await screen.findByText("Update connection setting")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Update connection setting"),
+    ).toBeInTheDocument();
   });
 
   it("runs diagnostics on demand and renders the PASS/WARN/FAIL table", async () => {
@@ -108,30 +140,34 @@ describe("SetupPage — editable connections", () => {
         { name: "Forma token", status: "warn", detail: "Expires in 2 days" },
       ],
     };
-    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes("/api/settings/doctor")) {
+    globalThis.fetch = vi
+      .fn()
+      .mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/settings/doctor")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: new Headers({ "content-type": "application/json" }),
+            json: async () => doctorBody,
+            text: async () => JSON.stringify(doctorBody),
+          } as Response);
+        }
         return Promise.resolve({
           ok: true,
           status: 200,
           headers: new Headers({ "content-type": "application/json" }),
-          json: async () => doctorBody,
-          text: async () => JSON.stringify(doctorBody),
+          json: async () => ({}),
+          text: async () => "{}",
         } as Response);
-      }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: async () => ({}),
-        text: async () => "{}",
-      } as Response);
-    });
+      });
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Run diagnostics" }));
 
-    await waitFor(() => expect(screen.getByText("Revit addin")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Revit addin")).toBeInTheDocument(),
+    );
     expect(screen.getByText("Pass")).toBeInTheDocument();
     expect(screen.getByText("Warn")).toBeInTheDocument();
   });

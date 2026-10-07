@@ -256,7 +256,9 @@ class RunFolder:
     def outcomes_path(self) -> Path:
         return self.root / "outcomes.json"
 
-    def write_metadata(self, *, status: str, state: dict[str, Any]) -> None:
+    def write_metadata(
+        self, *, status: str, state: dict[str, Any], demo: bool = False
+    ) -> None:
         # M2 (2026-07 audit): a run whose ruleset resolved to NO query spec exits
         # non-zero, but its recorded status used to stay "converged"/"completed"
         # — a forensic reader of metadata.json saw a clean run. Record the
@@ -283,6 +285,9 @@ class RunFolder:
             "finished_at": datetime.now().isoformat(timespec="seconds"),
             "duration_seconds": round(time.time() - self.started_at, 2),
             "status": recorded_status(status, state),
+            # Simulated model (mock clients). The trend table and delta
+            # baselines skip these; the panel still lists them.
+            "demo": bool(demo),
             "coverage_status": verdict,
             "query_coverage": state.get("query_coverage"),
             "geometry_coverage_status": geo_verdict,

@@ -498,6 +498,24 @@ autoaudit-bim/                           ← repo root (git root)
   add the construct, or it silently becomes an "unanalyzable" lint blind
   spot instead of a real check.
 
+- **`DEMO_*` is the ONE env group `PUT /settings` may set in `os.environ`
+  (v1.7-R25)** — `routes_settings.put_env` deliberately writes only the `.env`
+  file, and that is right for the rest of the allowlist: those are credentials
+  and paths a CHILD process reads when it is spawned, so mutating this
+  process's environment would only mask a stale value. The project selection
+  is different in kind. The service runs audits **in-process** and
+  `orchestrator.run` / `run_revit` / `apply` each read
+  `os.environ.get("DEMO_PROJECT_ID")` **at the moment they run** — file-only
+  would turn "switch project" into "switch project, then restart the
+  service", which is exactly the promise the Setup Project card exists to
+  keep (Streamlit never hit this: it spawns a subprocess with its own env).
+  The exception is scoped to the six keys in
+  `routes_settings._PROJECT_ENV_KEYS` and lives behind its own route
+  (`PUT /api/settings/project`), never `PUT /settings/env`. That route writes
+  the body **verbatim**, which is also what guarantees a project switch
+  clears the previously selected model rather than auditing project B against
+  project A's model.
+
 - **A behavior-changing PR carries its own record — in the SAME PR (adopted
   from the DeepSeek Harness review, their "Agent Notes MUST be in the
   same PR" rule)** — any PR that changes what the product does, promises, or
@@ -571,16 +589,21 @@ autoaudit-bim/                           ← repo root (git root)
     day it was added. **When verifying a hook, assert the commit count, not the
     message**: the block message printed perfectly while the commit succeeded.
 
-- **Run `--demo` in the export dir, not in this checkout.** A `--demo` run
-  rewrites `runs/trend.md`, `findings.json`, `review_queue.md` and
-  `data_quality_report.md` at the package root. Those are tracked, so a few demo
-  runs silently replace another session's real run history with demo rows — the
-  same incident lost a day of real Snowdon trend rows that way, and it is
-  invisible to the deletion hook because it is a MODIFICATION, not a deletion.
-  Do the demo acceptance in `$PUB` (the throwaway snapshot), and if you must run
-  it here, `git checkout -- bim-orchestrator/runs bim-orchestrator/findings.json
-  bim-orchestrator/review_queue.md bim-orchestrator/data_quality_report.md`
-  afterwards.
+- **A demo run writes under `runs/demo/`, never at the package root (v1.7-R24).**
+  `--demo` and `mode: demo` through the service used to rewrite the tracked
+  `findings.json`, `review_queue.md`, `data_quality_report.md` and
+  `runs/trend.md`. Three times in one week a demo replaced another session's
+  real Snowdon results — a MODIFICATION, invisible to the deletion hook. Now
+  `findings_out` for a demo defaults to `DEFAULT_DEMO_FINDINGS_OUT`
+  (`runs/demo/findings.json`, gitignored; side reports land beside it), the
+  run's `metadata.json` carries `demo: true`, the trend refresh is skipped, and
+  `render_trend_report` / `delta_report.find_baseline` skip `demo` folders even
+  when a later real run refreshes them. Run FOLDERS stay in `runs/` so the
+  panel still lists a demo. If you add a new demo entry point, pass
+  `demo=True` to `run_revit` and a `findings_out` under `DEFAULT_DEMO_DIR` —
+  `run_revit` does not enforce the path, the caller promises it. Doing the
+  acceptance in `$PUB` is still the cleanest, but a demo here no longer dirties
+  `git status`.
 
 ## Two json_to_yaml scripts — pick the right one
 

@@ -165,6 +165,38 @@ def rule_value_to_storage_unit(
     return converted, raw_unit
 
 
+# AECDM (Forma / ACC) reports every length, area and volume in SI, whatever the
+# project's own units: an IMPERIAL model (Pacific Continental Residence,
+# 2026-10-05) returns Unbounded Height 3.9624 = 13'-0" exactly. Revit's API
+# stores the same values in ft / ft² / ft³. One SI unit per storage unit.
+_SI_OF_STORAGE_UNIT: dict[str, str] = {"ft": "m", "ft²": "m²", "ft³": "m³"}
+
+
+def aecdm_value_to_storage_unit(param_name: str | None, value: Any) -> Any:
+    """Express an AECDM (SI) value in the parameter's Revit STORAGE unit.
+
+    Called once per parameter by the AECDM query path, at ingestion, so every
+    consumer downstream — a rule with or without ``unit:``, a lookup table, a
+    scope filter, the schedule-filter inverse — sees the unit system it
+    already assumes, whichever backend fetched the element.
+
+    Returns ``value`` unchanged when the parameter's storage unit is unknown
+    (custom/shared parameters), when that unit has no SI pair, or when
+    ``value`` is not a plain number (None, text, bool). Never guesses.
+    """
+    if param_name is None or isinstance(value, bool):
+        return value
+    storage = _storage_unit_for(param_name)
+    si = _SI_OF_STORAGE_UNIT.get(storage) if storage else None
+    if si is None:
+        return value
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return value
+    return convert(numeric, si, storage)
+
+
 class UnitConversionError(ValueError):
     """A rule declared a unit but the raw value's KNOWN storage unit has no
     registered factor to it. Comparing anyway would be a silent wrong-unit

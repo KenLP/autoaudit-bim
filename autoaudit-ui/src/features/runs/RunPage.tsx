@@ -50,7 +50,7 @@ export function RunPage() {
   const [tab, setTab] = useState<"profile" | "quick">("profile");
   const [profilePath, setProfilePath] = useState<string | undefined>(preselectProfilePath);
   const [selectedRules, setSelectedRules] = useState<string[]>([]);
-  const [mode, setMode] = useState<"run" | "run_revit" | "demo">("demo");
+  const [mode, setMode] = useState<"check" | "run" | "run_revit" | "demo">("demo");
   const [dryRun, setDryRun] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [maxIssues, setMaxIssues] = useState("");
@@ -252,12 +252,13 @@ export function RunPage() {
                 <span className="text-caption">{strings.run.modeSelect}</span>
                 <Select
                   value={mode}
-                  onValueChange={(v) => setMode(v as "run" | "run_revit" | "demo")}
+                  onValueChange={(v) => setMode(v as "check" | "run" | "run_revit" | "demo")}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="check">{strings.run.modeCheck}</SelectItem>
                     <SelectItem value="run">{strings.run.modeApply}</SelectItem>
                     <SelectItem value="run_revit">{strings.run.modeRunRevit}</SelectItem>
                     <SelectItem value="demo">{strings.run.modeDemo}</SelectItem>

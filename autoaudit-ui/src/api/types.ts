@@ -17,6 +17,25 @@ export interface HealthResponse {
   axes: Record<AxisName, boolean>;
 }
 
+/** `metadata.json.llm_usage` — written by `UsageRecorder.summary()` after a
+ *  run that had at least one LLM agent wired. Absent on a Phase-1 run. */
+export interface LlmUsage {
+  total_calls: number;
+  total_seconds: number;
+  by_agent: Record<string, number>;
+  failed_calls: number;
+  failed_by_agent: Record<string, number>;
+  blocked: number;
+  max_calls: number | null;
+  models: string[];
+  /** Provider-reported. 0 when the provider reported nothing (fake client,
+   *  older adapter) — the formatter omits the clause rather than print 0. */
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  tokens_by_agent: Record<string, { input: number; output: number }>;
+}
+
 export interface RunMetadata {
   run_id: string;
   mode: string;
@@ -42,6 +61,7 @@ export interface RunMetadata {
   project?: string | null;
   model?: string | null;
   profile?: string | null;
+  llm_usage?: LlmUsage | null;
   [extra: string]: unknown;
 }
 
@@ -70,6 +90,16 @@ export type Bucket =
 
 export type Severity = "high" | "medium" | "low";
 
+/** Advisory enrichment from the Diagnostic agent. Words only - it may never
+ *  set a value (`llm/interfaces.py` pins that), so nothing here is ever
+ *  written to the model. */
+export interface Diagnosis {
+  summary?: string | null;
+  suggested_action?: string | null;
+  source?: string | null;
+  confidence?: number | null;
+}
+
 export interface Finding {
   rule_id: string;
   element_id: number | string;
@@ -81,7 +111,13 @@ export interface Finding {
   severity?: Severity | string | null;
   message?: string | null;
   inherited_from?: string | null;
-  diagnosis?: string | null;
+  /** The Diagnostic agent's advisory enrichment. The plugin writes an OBJECT
+   *  ({summary, suggested_action, source, confidence}); older runs and every
+   *  deterministic path carry a bare string or nothing. Typed as BOTH because
+   *  the panel renders both shapes - it was typed `string` alone, so
+   *  `String(diagnosis)` printed "[object Object]" for every LLM diagnosis
+   *  (measured live on run-50d78cf2, 2026-09-14). */
+  diagnosis?: Diagnosis | string | null;
   evidence?: string | null;
   acc_issue_url?: string | null;
   [extra: string]: unknown;
@@ -125,6 +161,10 @@ export interface ApprovalFix {
   inherited_from?: string | null;
   action?: string | null;
   target?: string | null;
+  /** "llm" when a model proposed the value (L2-05) — the reason the approve
+   *  gate exists, so the approver must be able to see it. */
+  value_source?: string | null;
+  evidence?: unknown;
 }
 
 export type ApprovalStatus =
@@ -209,6 +249,7 @@ export type AuditPhase =
   | "query"
   | "qc"
   | "design"
+  | "llm"
   | "record"
   | "run";
 
@@ -617,6 +658,48 @@ export interface SettingsResponse {
   env: EnvEntry[];
   services: ServicesStatus;
   llm: { provider: string | null };
+}
+
+/* ── v1.7-R25: pick the ACC/Forma project by name ─────────────────────── */
+
+/** A hub, or an element group (what a user calls a "model"). */
+export interface FormaNamed {
+  id: string;
+  name: string;
+}
+
+/** One project and BOTH of its ids: `aecdm_id` drives element queries,
+ *  `dm_id` drives issues/DM. `dm_id` is "" for a project with no linked DM
+ *  container — callers keep the DM id they already had rather than blanking
+ *  it. */
+export interface FormaProject {
+  name: string;
+  aecdm_id: string;
+  dm_id: string;
+}
+
+/** `error` set (with empty lists) means the browse failed and the manual-ID
+ *  block is the way through — the server answers 200, never a 5xx. */
+export interface FormaProjectsResponse {
+  hub: FormaNamed | null;
+  projects: FormaProject[];
+  error: string | null;
+}
+
+export interface FormaElementGroupsResponse {
+  groups: FormaNamed[];
+  error: string | null;
+}
+
+/** The DEMO_* env group as one user-facing choice. Same shape both ways:
+ *  GET /api/settings/project and PUT /api/settings/project. */
+export interface ProjectSelection {
+  hub_id: string;
+  project_id: string;
+  aecdm_project_id: string;
+  element_group_id: string;
+  project_name: string;
+  element_group_name: string;
 }
 
 export interface SaveEnvRequest {

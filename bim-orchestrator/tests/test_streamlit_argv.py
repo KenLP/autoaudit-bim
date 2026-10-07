@@ -85,27 +85,59 @@ class _Proxy:
         return _Proxy()
 
 
-@pytest.fixture
-def app_module():
+TRACKED_TREND_MD = REPO_ROOT / "runs" / "trend.md"
+
+
+def _import_app(trend_sandbox: Path):
     """Import streamlit_app/app.py with a stubbed streamlit module so the
-    file-load top-level code (st.set_page_config etc.) doesn't blow up."""
-    import types
+    file-load top-level code (st.set_page_config etc.) doesn't blow up.
+
+    The app's top level renders every tab, and the Trend tab calls
+    ``write_trend_report(RUNS_DIR)`` -- RUNS_DIR is the REAL ``runs/``, whose
+    ``trend.md`` is tracked. RUNS_DIR is a module constant, so it can't be
+    patched before the import runs; instead the writer is redirected into
+    ``trend_sandbox`` for the duration of the import. The real renderer still
+    runs (against the sandbox), so the import path stays exercised."""
+    import dotenv
+
+    from bim_orchestrator import reports
 
     fake_st = _MockStreamlit()
     sys.modules["streamlit"] = fake_st  # type: ignore[assignment]
-
-    # dotenv stub too -- the app calls load_dotenv at import
-    fake_dotenv = types.ModuleType("dotenv")
-    fake_dotenv.load_dotenv = lambda *a, **k: None  # type: ignore[attr-defined]
-    sys.modules.setdefault("dotenv", fake_dotenv)
 
     sys.path.insert(0, str(STREAMLIT_APP_DIR))
     import importlib
 
     if "app" in sys.modules:
         del sys.modules["app"]
-    app = importlib.import_module("app")
+    # The app calls load_dotenv at import (and binds the name then), so it is
+    # neutralised on the REAL module rather than by planting a stub in
+    # sys.modules: a stub left there broke any later `from dotenv import
+    # dotenv_values` (pydantic_settings does one) whenever this file ran first.
+    real_write = reports.write_trend_report
+    with patch.object(
+        reports, "write_trend_report", lambda _runs_root: real_write(trend_sandbox)
+    ), patch.object(dotenv, "load_dotenv", lambda *a, **k: None):
+        app = importlib.import_module("app")
     return app
+
+
+@pytest.fixture
+def app_module(tmp_path):
+    return _import_app(tmp_path / "trend_sandbox")
+
+
+def test_importing_the_app_leaves_tracked_trend_md_untouched(tmp_path):
+    """Importing the app must not rewrite the tracked runs/trend.md.
+
+    It used to: every run of this file regenerated trend.md with a fresh
+    timestamp and the local runs/ contents, leaving a dirty tracked file."""
+    def _snapshot():
+        return TRACKED_TREND_MD.read_bytes() if TRACKED_TREND_MD.exists() else None
+
+    before = _snapshot()
+    _import_app(tmp_path / "trend_sandbox")
+    assert _snapshot() == before
 
 
 def _state(**overrides):
@@ -253,6 +285,38 @@ class TestParseAecdmProjects:
         )
         rows = app_module._parse_aecdm_projects([self._T(blob)])
         assert rows == [("urn:adsk.workspace:prod.project:abc", "", "No Container Project")]
+
+
+class TestReExportsClientParsers:
+    """v1.7-R25 — the parsers moved to ``mcp_clients/forma.py`` (the web UI's
+    project card needs them too). These wrappers exist so Streamlit's tuple
+    shapes survive the move; the point of the test is that they DELEGATE —
+    a second copy of the parser here would drift the next time Forma changes
+    its text format."""
+
+    class _T:
+        def __init__(self, text):
+            self.text = text
+
+    def test_name_id_wrapper_returns_id_name_tuples(self, app_module):
+        blob = "🏢 Ken's Hub  (ID: urn:adsk.ace:prod.scope:abc)\n"
+        assert app_module._parse_mcp_name_id_list([self._T(blob)]) == [
+            ("urn:adsk.ace:prod.scope:abc", "Ken's Hub")
+        ]
+
+    def test_wrappers_call_the_client_parsers(self, app_module, monkeypatch):
+        from bim_orchestrator.mcp_clients import forma as forma_mod
+
+        monkeypatch.setattr(
+            forma_mod, "parse_name_id_list", lambda raw: [forma_mod.FormaNamed(id="i", name="n")]
+        )
+        monkeypatch.setattr(
+            forma_mod,
+            "parse_aecdm_projects",
+            lambda raw: [forma_mod.FormaProject(name="n", aecdm_id="a", dm_id="d")],
+        )
+        assert app_module._parse_mcp_name_id_list(["ignored"]) == [("i", "n")]
+        assert app_module._parse_aecdm_projects(["ignored"]) == [("a", "d", "n")]
 
 
 class TestSaveRuleK10:

@@ -10,6 +10,8 @@ import type {
   DraftRuleResponse,
   ExportReportResponse,
   ExtractPdfResponse,
+  FormaElementGroupsResponse,
+  FormaProjectsResponse,
   HealthResponse,
   HighlightResponse,
   IdsImportResponse,
@@ -19,6 +21,7 @@ import type {
   PreviewNormalizeRequest,
   PreviewNormalizeResponse,
   ProfilesResponse,
+  ProjectSelection,
   ReferencesResponse,
   RevitDocumentResponse,
   RuleFileDetailResponse,
@@ -58,6 +61,9 @@ export const queryKeys = {
   references: ["references"] as const,
   revitDocument: ["revit-document"] as const,
   settings: ["settings"] as const,
+  settingsProject: ["settings", "project"] as const,
+  formaProjects: ["forma", "projects"] as const,
+  formaElementGroups: (aecdmId: string) => ["forma", "element-groups", aecdmId] as const,
 };
 
 export function useHealth() {
@@ -402,6 +408,57 @@ export function useSaveEnv() {
     mutationFn: (body: SaveEnvRequest) =>
       api.put<SaveEnvResponse>("/settings/env", body),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.settings }),
+  });
+}
+
+/* ── v1.7-R25: the Setup project card ───────────────────────────────────── */
+
+/** Browse every project in the hub, by name. A browse spawns the forma-mcp
+ *  subprocess and takes ~5-10s, so it is cached for five minutes rather than
+ *  re-run on every mount; `refetch()` backs the Retry button. Never throws
+ *  for a Forma failure — read `data.error` (the server answers 200 so the UI
+ *  can offer manual entry instead of an error screen). */
+export function useFormaProjects() {
+  return useQuery({
+    queryKey: queryKeys.formaProjects,
+    queryFn: () => api.get<FormaProjectsResponse>("/forma/projects"),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
+/** The models inside one project. Disabled until a project is chosen. */
+export function useFormaElementGroups(aecdmId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.formaElementGroups(aecdmId ?? ""),
+    queryFn: () =>
+      api.get<FormaElementGroupsResponse>(
+        `/forma/element-groups?project=${encodeURIComponent(aecdmId!)}`,
+      ),
+    enabled: !!aecdmId,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
+export function useProjectSelection() {
+  return useQuery({
+    queryKey: queryKeys.settingsProject,
+    queryFn: () => api.get<ProjectSelection>("/settings/project"),
+  });
+}
+
+/** Saving takes effect immediately — the service sets os.environ as well as
+ *  .env, so the next run picks the new project up without a restart. */
+export function useSaveProjectSelection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ProjectSelection) =>
+      api.put<ProjectSelection>("/settings/project", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.settingsProject });
+      qc.invalidateQueries({ queryKey: queryKeys.settings });
+    },
   });
 }
 

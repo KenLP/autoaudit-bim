@@ -15,6 +15,10 @@ AECDM specifics
   Instance separation to merge (unlike Revit MCP). ``_attach_params``
   simply lifts the ``properties: [{name, value}, ...]`` array into a
   ``params: {name: value}`` dict for O(1) rule lookup.
+* AECDM reports lengths, areas and volumes in SI even for imperial models,
+  while rules, lookup tables and recipes assume Revit's storage units
+  (ft / ft² / ft³). ``_normalize_units`` converts ``params`` once, right
+  after the flatten; ``properties`` keeps the raw SI values.
 * Catalog ``aecdm_label`` may be ``None`` for categories AECDM doesn't
   expose (e.g. structural rebar) — :func:`derive_specs` drops those
   cleanly with a warn. The run continues with whatever resolved.
@@ -30,6 +34,7 @@ import structlog
 from bim_orchestrator.mcp_clients.forma import FormaMCPClient
 from bim_orchestrator.policies.ost_catalog import OSTCatalog
 from bim_orchestrator.policies.query_specs import QuerySpec, derive_specs_with_coverage
+from bim_orchestrator.policies.revit_units import aecdm_value_to_storage_unit
 from bim_orchestrator.policies.rules_schema import RuleSet
 from bim_orchestrator.state import OrchestratorState
 
@@ -142,7 +147,8 @@ class QueryAgent:
                         f"query_elements({spec.backend_category}) failed: {exc}"
                     ),
                 }
-            elements.extend(_attach_params(el, spec.category_label) for el in raw)
+            elements.extend(_normalize_units(_attach_params(el, spec.category_label))
+                            for el in raw)
 
         log.info(
             "query_agent.done",
@@ -178,6 +184,19 @@ def _attach_params(element: dict[str, Any], category: str) -> dict[str, Any]:
             continue
         params[name] = prop.get("value")
     return {**element, "category": category, "params": params}
+
+
+def _normalize_units(element: dict[str, Any]) -> dict[str, Any]:
+    """AECDM speaks SI; every rule, lookup table and recipe here speaks Revit's
+    storage units. Convert ``params`` once, at the backend boundary. The raw SI
+    values stay in ``properties`` for traceability."""
+    return {
+        **element,
+        "params": {
+            name: aecdm_value_to_storage_unit(name, value)
+            for name, value in element["params"].items()
+        },
+    }
 
 
 def _specs_from_categories(

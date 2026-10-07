@@ -31,6 +31,23 @@ _DEFAULT_MODEL = "qwen3:14b"
 _DEFAULT_BASE_URL = "http://localhost:11434"
 
 
+def _ollama_usage(data: Any) -> tuple[int, int] | None:
+    """``(prompt_eval_count, eval_count)`` from an ``/api/chat`` reply, or None.
+
+    Ollama omits ``prompt_eval_count`` when the prompt was served from its
+    cache, so a missing field means 0 for that side, not "unknown" — but when
+    NEITHER field is present the reply carried no accounting at all.
+    """
+    if not isinstance(data, dict):
+        return None
+    if "prompt_eval_count" not in data and "eval_count" not in data:
+        return None
+    try:
+        return int(data.get("prompt_eval_count") or 0), int(data.get("eval_count") or 0)
+    except (TypeError, ValueError):
+        return None
+
+
 class OllamaLLMClient(LLMClient):
     def __init__(
         self,
@@ -73,6 +90,7 @@ class OllamaLLMClient(LLMClient):
         }
         if fmt is not None:
             body["format"] = fmt
+        self.last_usage = None
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 resp = await client.post(f"{self._base_url}/api/chat", json=body)
@@ -80,6 +98,7 @@ class OllamaLLMClient(LLMClient):
                 data = resp.json()
         except Exception as exc:  # connection refused, timeout, HTTP error, bad JSON env
             raise LLMError(f"Ollama request failed: {exc}") from exc
+        self.last_usage = _ollama_usage(data)
         return (data.get("message") or {}).get("content", "") or ""
 
     async def complete(

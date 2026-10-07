@@ -464,6 +464,54 @@ class PutEnvResponse(BaseModel):
     ok: bool = True
 
 
+# ── v1.7-R25: pick the ACC/Forma project by name ──────────────────────────
+
+
+class FormaNamedItem(BaseModel):
+    """A hub, or an element group (what a user calls a "model")."""
+
+    id: str
+    name: str
+
+
+class FormaProjectItem(BaseModel):
+    """One project with BOTH ids: ``aecdm_id`` drives element queries,
+    ``dm_id`` drives issues/DM. ``dm_id`` is empty for a project with no
+    linked DM container."""
+
+    name: str
+    aecdm_id: str
+    dm_id: str
+
+
+class FormaProjectsResponse(BaseModel):
+    """``error`` set (with empty lists) means the browse failed and the UI
+    should offer manual entry — never a 5xx, see routes_forma."""
+
+    hub: FormaNamedItem | None = None
+    projects: list[FormaProjectItem] = Field(default_factory=list)
+    error: str | None = None
+
+
+class FormaElementGroupsResponse(BaseModel):
+    groups: list[FormaNamedItem] = Field(default_factory=list)
+    error: str | None = None
+
+
+class ProjectSelection(BaseModel):
+    """The DEMO_* group as one user-facing choice — the shape of both
+    ``GET`` and ``PUT /settings/project``. Names ride along so the UI can say
+    what is selected without a second browse; ids are not secrets, so nothing
+    here is masked."""
+
+    hub_id: str = ""
+    project_id: str = ""
+    aecdm_project_id: str = ""
+    element_group_id: str = ""
+    project_name: str = ""
+    element_group_name: str = ""
+
+
 class TestConnectionResponse(BaseModel):
     ok: bool
     message: str

@@ -26,22 +26,34 @@
     How long to wait for /api/health. A cold start imports LangGraph + FastAPI,
     which is slow on first run; 90s is deliberately generous.
 
+.PARAMETER StartPage
+    Which page of the SAME UI to open once the service is healthy. The desktop
+    has two buttons -- "AutoAudit" (the dashboard) and "AutoAudit - Setup" (go
+    straight to picking the ACC/Forma project) -- and they differ ONLY by this
+    parameter, because they are one service and one UI, not two apps.
+
 .EXAMPLE
     & scripts\Start-AutoAudit.ps1
+.EXAMPLE
+    & scripts\Start-AutoAudit.ps1 -StartPage /ui/setup
 .EXAMPLE
     & scripts\Start-AutoAudit.ps1 -Stop
 #>
 param(
     [switch]$Stop,
     [switch]$NoBrowser,
-    [int]$TimeoutSeconds = 90
+    [int]$TimeoutSeconds = 90,
+    [string]$StartPage = "/ui/"
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 if ($env:AUTOAUDIT_PORT) { $port = [int]$env:AUTOAUDIT_PORT } else { $port = 8601 }
-$uiUrl     = "http://127.0.0.1:$port/ui/"
+# A leading slash is the caller's job to get right, but a shortcut's
+# Arguments string is easy to fumble -- normalise rather than open a 404.
+if (-not $StartPage.StartsWith("/")) { $StartPage = "/$StartPage" }
+$uiUrl     = "http://127.0.0.1:$port$StartPage"
 $healthUrl = "http://127.0.0.1:$port/api/health"
 $logDir    = Join-Path $repoRoot "runs"
 $outLog    = Join-Path $logDir "service_console.out.log"

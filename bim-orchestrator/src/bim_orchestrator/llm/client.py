@@ -66,6 +66,15 @@ class LLMClient(ABC):
     # inherits None and nothing breaks.
     model: str | None = None
 
+    # Token usage of the LAST call, as ``(input_tokens, output_tokens)``, or
+    # None when the provider reported nothing (the fake) or the call failed.
+    # A client sets this to None BEFORE each request and fills it AFTER, so a
+    # failed call can never be billed with its predecessor's numbers. The
+    # metered wrapper reads it in its ``finally`` — it cannot see the raw
+    # response (``complete`` returns text by contract), and threading usage
+    # through the return value would change every agent's call surface.
+    last_usage: tuple[int, int] | None = None
+
     @abstractmethod
     async def complete(
         self, *, system: str, prompt: str, max_tokens: int = 512

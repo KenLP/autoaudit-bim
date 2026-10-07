@@ -102,9 +102,25 @@ async def probe_revit() -> bool:
 
 
 def probe_forma() -> bool:
-    from bim_orchestrator.mcp_clients.forma import _vendor_exe
+    """Is a Forma MCP server actually launchable?
 
-    return _vendor_exe("forma-mcp") is not None
+    Asks the SAME resolver the client uses (``FormaMCPConfig.from_env``)
+    instead of looking for one Windows filename. The SEA ``forma-mcp.exe`` is
+    only ONE of the two ways this server runs: with no exe present the client
+    falls back to ``node dist/index.js``. Probing for the exe therefore
+    reported "Forma disconnected" on a perfectly working non-Windows setup —
+    found 2026-09-13 on macOS, where the UI's Forma dot stayed permanently red
+    while `Test Forma` connected and returned live ACC data.
+
+    "Launchable" means the command resolves AND its entrypoint exists. It does
+    NOT mean credentials are valid — that is what `Test Forma` is for.
+
+    Shares `launch_target` with ``--doctor`` so the dot and the doctor table
+    can never disagree about whether Forma is set up.
+    """
+    from bim_orchestrator.mcp_clients.forma import launch_target
+
+    return launch_target()[0]
 
 
 def probe_axes() -> tuple[bool, bool]:
@@ -351,6 +367,7 @@ def create_app(
     from bim_orchestrator.service.routes_builder import build_builder_router
     from bim_orchestrator.service.routes_catalogs import build_catalogs_router
     from bim_orchestrator.service.routes_extraction import build_extraction_router
+    from bim_orchestrator.service.routes_forma import build_forma_router
     from bim_orchestrator.service.routes_revit import build_revit_router
     from bim_orchestrator.service.routes_rules import build_rules_router
     from bim_orchestrator.service.routes_runs import build_runs_router
@@ -360,6 +377,7 @@ def create_app(
     runs_router = build_runs_router(runs_root, runner)
     approvals_router = build_approvals_router(approvals_dir)
     revit_router = build_revit_router()
+    forma_router = build_forma_router()
     rules_router = build_rules_router(config_dir)
     catalogs_router = build_catalogs_router(config_dir)
     builder_router = build_builder_router(config_dir)
@@ -369,7 +387,7 @@ def create_app(
     for r in (
         p3_router, runs_router, approvals_router, revit_router,
         rules_router, catalogs_router, builder_router,
-        settings_router, extraction_router,
+        settings_router, extraction_router, forma_router,
     ):
         app.include_router(r)
         app.include_router(r, prefix="/api")

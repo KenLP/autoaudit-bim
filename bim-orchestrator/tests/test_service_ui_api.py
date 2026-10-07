@@ -9,7 +9,9 @@ event loop per request and the background audit task never progresses).
 
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 import time
 from pathlib import Path
 
@@ -20,6 +22,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from bim_orchestrator.service import app as app_module  # noqa: E402
 from bim_orchestrator.service import routes_extraction  # noqa: E402
+from bim_orchestrator.service import routes_forma  # noqa: E402
 from bim_orchestrator.service import routes_revit  # noqa: E402
 from bim_orchestrator.service import routes_settings  # noqa: E402
 from bim_orchestrator.service.app import create_app  # noqa: E402
@@ -1878,3 +1881,311 @@ class TestValidateEndpointCanSeeRulesetContext:
         })
         assert r.status_code == 200
         assert r.json()["ok"] is False
+
+
+class TestFormaBrowse:
+    """v1.7-R25 — the project picker's two reads.
+
+    The contract that matters is the one a 5xx would break: a browse that
+    times out, 403s (rotated APS client, robot not yet invited) or finds no
+    server still answers **200 with an ``error``**, because the UI's fallback
+    is its manual-ID block, not an error screen. Forma is never spawned here —
+    ``routes_forma.FormaMCPClient`` is replaced with a fake.
+    """
+
+    class _T:
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+    _HUB = "🏢 Ken's Hub  (ID: urn:adsk.ace:prod.scope:aa)\n"
+    _PROJECTS = (
+        "• Some Office\n"
+        "    AECDM id: urn:adsk.workspace:prod.project:8\n"
+        "    DM/Issues id: b.7\n"
+        "• Sample ACC Project\n"
+        "    AECDM id: urn:adsk.workspace:prod.project:2\n"
+        "    DM/Issues id: b.1\n"
+    )
+    _GROUPS = "🏗️ Snowdon Towers  (ID: urn:adsk.wipprod:fs.file:vf.eg1)\n"
+
+    def _install_fake(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        hubs: object = None,
+        projects: object = None,
+        groups: object = None,
+        raises: Exception | None = None,
+        sleep: float | None = None,
+    ) -> None:
+        T = self._T
+        outer = self
+
+        class _Fake:
+            def __init__(self, config: object) -> None:
+                pass
+
+            async def __aenter__(self):
+                if raises is not None:
+                    raise raises
+                if sleep is not None:
+                    await asyncio.sleep(sleep)
+                return self
+
+            async def __aexit__(self, *exc: object) -> None:
+                return None
+
+            async def browse_projects(self):
+                from bim_orchestrator.mcp_clients.forma import (
+                    parse_aecdm_projects,
+                    parse_name_id_list,
+                )
+
+                hub = parse_name_id_list([T(hubs if hubs is not None else outer._HUB)])[0]
+                return hub, parse_aecdm_projects(
+                    [T(projects if projects is not None else outer._PROJECTS)]
+                )
+
+            async def browse_element_groups(self, project_id: str):
+                from bim_orchestrator.mcp_clients.forma import parse_name_id_list
+
+                return parse_name_id_list([T(groups if groups is not None else outer._GROUPS)])
+
+        monkeypatch.setattr(routes_forma, "FormaMCPClient", _Fake)
+        monkeypatch.setattr(
+            routes_forma, "FormaMCPConfig", type("C", (), {"from_env": staticmethod(lambda: None)})
+        )
+
+    def test_projects_returns_names_and_both_ids(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._install_fake(monkeypatch)
+        r = client.get("/api/forma/projects")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["error"] is None
+        assert body["hub"] == {"id": "urn:adsk.ace:prod.scope:aa", "name": "Ken's Hub"}
+        assert body["projects"] == [
+            {
+                "name": "Some Office",
+                "aecdm_id": "urn:adsk.workspace:prod.project:8",
+                "dm_id": "b.7",
+            },
+            {
+                "name": "Sample ACC Project",
+                "aecdm_id": "urn:adsk.workspace:prod.project:2",
+                "dm_id": "b.1",
+            },
+        ]
+
+    def test_projects_reports_a_failure_as_200_plus_error(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A 403 from a rotated APS client is the LIVE case — the UI has to be able
+        # to offer manual entry, which a 5xx page would hide.
+        self._install_fake(monkeypatch, raises=RuntimeError("HTTP 403 forbidden"))
+        r = client.get("/api/forma/projects")
+        assert r.status_code == 200
+        body = r.json()
+        assert "403" in body["error"]
+        assert body["projects"] == []
+        assert body["hub"] is None
+
+    def test_projects_reports_a_timeout_as_200_plus_error(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(routes_forma, "_BROWSE_TIMEOUT_S", 0.05)
+        self._install_fake(monkeypatch, sleep=5.0)
+        r = client.get("/api/forma/projects")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["error"] and "0s" in body["error"]  # the message names the ceiling
+        assert body["projects"] == []
+
+    def test_element_groups_returns_id_name_pairs(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._install_fake(monkeypatch)
+        r = client.get("/api/forma/element-groups?project=urn:adsk.workspace:prod.project:2")
+        assert r.status_code == 200
+        assert r.json() == {
+            "groups": [{"id": "urn:adsk.wipprod:fs.file:vf.eg1", "name": "Snowdon Towers"}],
+            "error": None,
+        }
+
+    def test_element_groups_without_a_project_does_not_spawn_forma(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The AECDM API rejects an empty/DM-form id anyway; answering here
+        # saves a doomed subprocess and the full browse timeout.
+        def _explode(config: object) -> None:
+            raise AssertionError("no client should be spawned without a project")
+
+        monkeypatch.setattr(routes_forma, "FormaMCPClient", _explode)
+        r = client.get("/api/forma/element-groups")
+        assert r.status_code == 200
+        assert r.json() == {"groups": [], "error": "no project selected"}
+
+    def test_element_groups_reports_a_failure_as_200_plus_error(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._install_fake(monkeypatch, raises=RuntimeError("mcp server not found"))
+        r = client.get("/api/forma/element-groups?project=urn:x")
+        assert r.status_code == 200
+        assert r.json()["error"] == "mcp server not found"
+        assert r.json()["groups"] == []
+
+    def test_both_routes_are_reachable_unprefixed_too(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Every router in this app is included twice (root + /api) — a new one
+        # that forgot the double-include would only fail on the P3-2 contract.
+        self._install_fake(monkeypatch)
+        assert client.get("/forma/projects").status_code == 200
+        assert client.get("/forma/element-groups?project=urn:x").status_code == 200
+
+
+_SELECTION = {
+    "hub_id": "b.hub1",
+    "project_id": "b.proj1",
+    "aecdm_project_id": "urn:adsk.workspace:prod.project:1",
+    "element_group_id": "urn:adsk.wipprod:fs.file:vf.eg1",
+    "project_name": "Sample ACC Project",
+    "element_group_name": "Snowdon Towers",
+}
+
+
+class TestProjectSelection:
+    """v1.7-R25 — GET/PUT /settings/project.
+
+    The load-bearing claim is that saving a project takes effect WITHOUT a
+    restart: this service runs audits in-process, and orchestrator.run reads
+    os.environ["DEMO_PROJECT_ID"] at the moment it runs. Writing only the
+    .env file would turn "switch project" into "switch project and restart",
+    which is the promise the Setup card exists to keep.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _clean_env(self, monkeypatch: pytest.MonkeyPatch):
+        # monkeypatch restores the whole os.environ block afterwards, so a
+        # PUT in one test cannot leak a project id into the next one (or into
+        # the developer's shell).
+        for key in (
+            "DEMO_HUB_ID", "DEMO_PROJECT_ID", "DEMO_AECDM_PROJECT_ID",
+            "DEMO_ELEMENT_GROUP_ID", "DEMO_PROJECT_NAME", "DEMO_ELEMENT_GROUP_NAME",
+        ):
+            monkeypatch.delenv(key, raising=False)
+
+    def test_put_writes_the_root_env_file(self, client: TestClient, tmp_path: Path) -> None:
+        r = client.put("/api/settings/project", json=_SELECTION)
+        assert r.status_code == 200
+        text = (tmp_path / ".env").read_text(encoding="utf-8")
+        assert "DEMO_PROJECT_ID=b.proj1" in text
+        assert "DEMO_AECDM_PROJECT_ID=urn:adsk.workspace:prod.project:1" in text
+        assert "DEMO_ELEMENT_GROUP_ID=urn:adsk.wipprod:fs.file:vf.eg1" in text
+        assert "DEMO_PROJECT_NAME=Sample ACC Project" in text
+        assert "DEMO_ELEMENT_GROUP_NAME=Snowdon Towers" in text
+        # NOT the APS file — a project is not a credential.
+        assert not (tmp_path / "vendor" / "forma-mcp" / ".env").exists()
+
+    def test_put_sets_os_environ_so_a_run_needs_no_restart(
+        self, client: TestClient
+    ) -> None:
+        client.put("/api/settings/project", json=_SELECTION)
+        assert os.environ["DEMO_PROJECT_ID"] == "b.proj1"
+        assert os.environ["DEMO_AECDM_PROJECT_ID"] == "urn:adsk.workspace:prod.project:1"
+        assert os.environ["DEMO_ELEMENT_GROUP_ID"] == "urn:adsk.wipprod:fs.file:vf.eg1"
+
+    def test_get_reads_back_what_put_saved(self, client: TestClient) -> None:
+        client.put("/api/settings/project", json=_SELECTION)
+        assert client.get("/api/settings/project").json() == _SELECTION
+
+    def test_get_falls_back_to_the_env_file_for_a_fresh_process(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        # A restarted service has nothing in os.environ yet (uvicorn's
+        # load_dotenv aside) — the saved selection still has to show up.
+        (tmp_path / ".env").write_text(
+            "# comment\nDEMO_PROJECT_ID=b.fromfile\nDEMO_PROJECT_NAME=From File\n",
+            encoding="utf-8",
+        )
+        body = client.get("/api/settings/project").json()
+        assert body["project_id"] == "b.fromfile"
+        assert body["project_name"] == "From File"
+        assert body["element_group_id"] == ""
+
+    def test_get_is_unmasked_because_a_project_id_is_not_a_secret(
+        self, client: TestClient
+    ) -> None:
+        client.put("/api/settings/project", json=_SELECTION)
+        assert "•" not in client.get("/api/settings/project").text
+
+    def test_switching_project_clears_the_previously_selected_model(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        """DoD #3 — the wrong-model bug. Carrying the old element group over
+        would run project B's audit against project A's model, with no
+        warning anywhere in the output."""
+        client.put("/api/settings/project", json=_SELECTION)
+        client.put("/api/settings/project", json={
+            "hub_id": "b.hub1",
+            "project_id": "b.proj2",
+            "aecdm_project_id": "urn:adsk.workspace:prod.project:2",
+            "project_name": "Some Office",
+        })
+        body = client.get("/api/settings/project").json()
+        assert body["element_group_id"] == ""
+        assert body["element_group_name"] == ""
+        assert os.environ["DEMO_ELEMENT_GROUP_ID"] == ""
+        text = (tmp_path / ".env").read_text(encoding="utf-8")
+        assert "DEMO_ELEMENT_GROUP_ID=\n" in text
+        # ...and the file was upserted, not appended to twice.
+        assert text.count("DEMO_ELEMENT_GROUP_ID=") == 1
+
+    def test_put_rejects_a_newline_in_any_value(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        # Same line-oriented hazard put_env guards (SVC-4): .env is parsed by
+        # line, so a newline smuggles a second key past every check.
+        r = client.put("/api/settings/project", json={
+            **_SELECTION, "project_name": "x\nANTHROPIC_API_KEY=stolen",
+        })
+        assert r.status_code == 400
+        assert not (tmp_path / ".env").exists()  # nothing partially written
+        assert "DEMO_PROJECT_ID" not in os.environ
+        r2 = client.put(
+            "/api/settings/project", json={**_SELECTION, "hub_id": "x\rEVIL=1"}
+        )
+        assert r2.status_code == 400
+
+    def test_an_empty_body_is_a_valid_clear_everything(self, client: TestClient) -> None:
+        client.put("/api/settings/project", json=_SELECTION)
+        assert client.put("/api/settings/project", json={}).status_code == 200
+        assert client.get("/api/settings/project").json()["project_id"] == ""
+
+    def test_demo_keys_are_listed_by_get_settings(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The allowlist gate is what made the Setup tab silently omit these
+        # while its own caption promised you could change the project there.
+        monkeypatch.setenv("DEMO_PROJECT_ID", "b.proj1")
+        keys = {e["key"] for e in client.get("/api/settings").json()["env"]}
+        assert {"DEMO_PROJECT_ID", "DEMO_AECDM_PROJECT_ID", "DEMO_ELEMENT_GROUP_ID"} <= keys
+
+    def test_put_env_still_does_not_touch_os_environ_for_other_keys(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The os.environ exception is scoped to the project selection. A
+        credential written through PUT /settings/env is read by a CHILD
+        process from its own .env — mutating the parent's environment there
+        would only mask a stale value."""
+        monkeypatch.delenv("BIM_LLM_MODEL", raising=False)
+        r = client.put("/api/settings/env", json={"key": "BIM_LLM_MODEL", "value": "x"})
+        assert r.status_code == 200
+        assert "BIM_LLM_MODEL" not in os.environ
+
+    def test_the_project_routes_are_reachable_unprefixed_too(
+        self, client: TestClient
+    ) -> None:
+        assert client.put("/settings/project", json=_SELECTION).status_code == 200
+        assert client.get("/settings/project").json()["project_name"] == "Sample ACC Project"

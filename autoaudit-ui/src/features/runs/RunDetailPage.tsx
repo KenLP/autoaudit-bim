@@ -13,6 +13,7 @@ import { useHighlight } from "@/api/hooks";
 import { useIsCompact } from "@/lib/useIsCompact";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
+import { formatCount, formatLlmUsage } from "@/lib/llmUsage";
 import { downloadCsv, toCsv } from "@/lib/csv";
 import {
   DEFAULT_FINDINGS_FILTER,
@@ -118,6 +119,10 @@ export function RunDetailPage() {
   }
 
   const summary = run.metadata.outcomes_summary;
+  // Present only when at least one LLM agent made a call (Phase-1 runs carry
+  // no llm_usage). Same line the CLI prints, so panel and terminal agree.
+  const llmUsage = run.metadata.llm_usage ?? null;
+  const llmLine = formatLlmUsage(llmUsage);
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -161,13 +166,30 @@ export function RunDetailPage() {
           active={statBucketFilter === "missing_data"}
           onClick={() => setStatBucketFilter((v) => (v === "missing_data" ? "all" : "missing_data"))}
         />
+        {llmLine && llmUsage && (
+          <StatTile
+            label={strings.runDetail.llmTile}
+            value={llmUsage.total_tokens > 0 ? formatCount(llmUsage.total_tokens) : llmUsage.total_calls}
+            color="var(--primary)"
+          />
+        )}
       </div>
+      {llmLine && (
+        <div className="text-caption" data-testid="llm-usage-line">
+          {strings.runDetail.llmLine}: {llmLine}
+        </div>
+      )}
 
       <div
         className={
           isCompact
             ? "flex flex-col gap-3"
-            : "grid flex-1 grid-cols-[200px,1fr,320px] gap-3 overflow-hidden"
+            : // min-h: the row used to take its height from the findings
+              // column's own min-h-[300px], which left the detail column 300px
+              // tall against ~720px of content -- a diagnosis could only be
+              // read by scrolling. The grid sits in a parent with no definite
+              // height, so flex-1 alone resolves to zero.
+              "grid min-h-[520px] flex-1 grid-cols-[200px_1fr_320px] gap-3 overflow-hidden"
         }
       >
         {!isCompact && (

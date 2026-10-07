@@ -498,9 +498,9 @@ def test_schedule_name_uses_unbracketed_convention():
 
 
 def test_forbidden_char_in_rule_id_triggers_honesty_check():
-    """F1: a rule id that (via the naming convention) puts a forbidden Revit
-    character into the schedule name gets silently renamed by the (mocked)
-    addin. verification_views must NOT trust the requested name — it reports
+    """F1, PRE-0.8.36 addin: a rule id that (via the naming convention) puts a
+    forbidden Revit character into the schedule name gets silently renamed by
+    the (mocked) addin. verification_views must NOT trust the requested name — it reports
     status="created_renamed" and surfaces both names, never crashes."""
     async def run():
         rule = mk_rule("present_and_nonempty", id="rooms.dept[legacy]",
@@ -508,7 +508,7 @@ def test_forbidden_char_in_rule_id_triggers_honesty_check():
         rec = build_check_record(
             rule, _el("1", "Lobby", "Rooms", Department="Public"),
             raw_value="Public", value="Public", passed=True, status="compliant")
-        mock = MockRevitMCPClient()
+        mock = MockRevitMCPClient(legacy_silent_schedule_rename=True)
         return await create_verification_schedules(mock, [rec], catalog=OSTCatalog.load())
 
     results = asyncio.run(run())
@@ -528,7 +528,7 @@ def test_created_renamed_counted_in_manifest():
         rec = build_check_record(
             rule, _el("1", "Lobby", "Rooms", Department="Public"),
             raw_value="Public", value="Public", passed=True, status="compliant")
-        mock = MockRevitMCPClient()
+        mock = MockRevitMCPClient(legacy_silent_schedule_rename=True)
         return await create_verification_schedules(mock, [rec], catalog=OSTCatalog.load())
 
     results = asyncio.run(run())
@@ -541,8 +541,8 @@ def test_created_renamed_counted_in_manifest():
 
 
 def test_duplicate_valid_name_without_probe_surfaces_as_created_renamed():
-    """F3: a duplicate (but otherwise valid) name is ALSO silently renamed by
-    the addin rather than erroring. When the primary get_views() probe is
+    """F3, PRE-0.8.36 addin: a duplicate (but otherwise valid) name is ALSO
+    silently renamed by the addin rather than erroring. When the primary get_views() probe is
     unavailable, verification_views can't know ahead of time — it issues the
     create call, the addin quietly hands back a different name, and the
     honesty-check catches it as "created_renamed" (never a false "existing",
@@ -553,7 +553,10 @@ def test_duplicate_valid_name_without_probe_surfaces_as_created_renamed():
         rec = build_check_record(
             rule, _el("1", "Lobby", "Rooms", Department="Public"),
             raw_value="Public", value="Public", passed=True, status="compliant")
-        mock = MockRevitMCPClient(unsupported_commands={"revit_get_views"})
+        mock = MockRevitMCPClient(
+            unsupported_commands={"revit_get_views"},
+            legacy_silent_schedule_rename=True,
+        )
         first = await create_verification_schedules(mock, [rec], catalog=OSTCatalog.load())
         second = await create_verification_schedules(mock, [rec], catalog=OSTCatalog.load())
         return first, second
@@ -567,6 +570,117 @@ def test_duplicate_valid_name_without_probe_surfaces_as_created_renamed():
     assert second[0].status == "created_renamed"
     assert second[0].requested_name == "AutoAudit - rooms.dept"
     assert second[0].schedule_name != "AutoAudit - rooms.dept"
+
+# ── RevitMCPServer v0.8.36+: a refused name is an ERROR, not a silent rename ──
+# measured by the RevitMCPServer team on Revit 2027, 17/17 cases:
+# 400 invalid_chars for a forbidden character, 409 name_collision for a
+# duplicate, the half-made schedule rolled back either way. The mock's default
+# is that behaviour now; the three tests above opt into the older one.
+
+
+def _dept_record(rule_id: str = "rooms.dept"):
+    rule = mk_rule("present_and_nonempty", id=rule_id,
+                   parameter="Department", category="Rooms")
+    return build_check_record(
+        rule, _el("1", "Lobby", "Rooms", Department="Public"),
+        raw_value="Public", value="Public", passed=True, status="compliant")
+
+
+def test_current_addin_forbidden_char_is_an_error_and_leaves_nothing_behind():
+    """A name Revit refuses is reported as an error carrying the addin's own
+    reason — never as "created", never under a name we did not choose — and
+    no schedule is left in the model (the addin rolls the transaction back)."""
+    async def run():
+        mock = MockRevitMCPClient()
+        results = await create_verification_schedules(
+            mock, [_dept_record("rooms.dept[legacy]")], catalog=OSTCatalog.load()
+        )
+        return mock, results
+
+    mock, results = asyncio.run(run())
+    r = results[0]
+    assert r.status == "error"
+    assert r.schedule_id is None
+    assert r.detail.startswith("invalid_chars:")
+    assert "[" in r.detail and "]" in r.detail          # the addin names the chars
+    assert r.requested_name == "AutoAudit - rooms.dept[legacy]"
+    assert not [v for v in mock.all_views if v.get("viewType") == "Schedule"]
+    assert manifest_dict(results)["summary"]["created_renamed"] == 0
+
+
+def test_current_addin_duplicate_without_probe_is_existing_via_name_collision():
+    """The fallback idempotency signal. With get_views() unavailable, the
+    second run can only learn the schedule exists from create_schedule's own
+    refusal — and the real addin says so with `name_collision`. Before this
+    code was in _EXISTS_CODES (four GUESSED codes, none of them the real one),
+    that 409 fell through to status="error": an idempotent re-run reported as
+    a failure."""
+    async def run():
+        mock = MockRevitMCPClient(unsupported_commands={"revit_get_views"})
+        rec = _dept_record()
+        first = await create_verification_schedules(mock, [rec], catalog=OSTCatalog.load())
+        second = await create_verification_schedules(mock, [rec], catalog=OSTCatalog.load())
+        return first, second
+
+    first, second = asyncio.run(run())
+    assert first[0].status == "created"
+    assert second[0].status == "existing"
+    assert second[0].detail.startswith("name_collision:")
+    assert second[0].schedule_name == "AutoAudit - rooms.dept"
+
+
+def test_skipped_fields_from_create_schedule_reach_the_rendered_manifest():
+    """v0.8.36 reports requested columns that match no schedulable field in
+    `skippedFields` (previously dropped without a word). They ride the same
+    warnings channel as configure_schedule's, so "created" cannot pass for
+    "created with every column" — asserted on the RENDERED markdown, where a
+    reviewer reads it, not only on the result object."""
+    async def run():
+        mock = MockRevitMCPClient(create_schedule_skipped_fields=["Not A Field"])
+        return await create_verification_schedules(
+            mock, [_dept_record()], catalog=OSTCatalog.load()
+        )
+
+    results = asyncio.run(run())
+    r = results[0]
+    assert r.status == "created"
+    assert any("'Not A Field'" in w and "column not added" in w for w in r.warnings)
+    text = render_manifest_markdown(results)
+    assert "Not A Field" in text
+    assert "Rules with addin warnings" in text
+
+
+def test_forbidden_set_matches_the_measured_boundary():
+    """The mock's forbidden set is the one RevitMCPServer v0.8.36 measured char
+    by char on Revit 2027: the backtick IS refused (the 2026-07-12 probe here
+    missed it) and `*` is NOT (allowed in a view name, unlike a family name).
+    Pinned both ways because either drift misleads: looser lets a name Revit
+    refuses pass in tests; stricter fails a name Revit would accept."""
+    async def run(rule_id):
+        mock = MockRevitMCPClient()
+        return (await create_verification_schedules(
+            mock, [_dept_record(rule_id)], catalog=OSTCatalog.load()
+        ))[0]
+
+    tick = asyncio.run(run("rooms.dept`x"))
+    assert tick.status == "error" and tick.detail.startswith("invalid_chars:")
+    star = asyncio.run(run("rooms.dept*x"))
+    assert star.status == "created"
+    assert star.schedule_name == "AutoAudit - rooms.dept*x"
+
+
+def test_older_addin_without_skipped_fields_key_reports_no_field_warning():
+    """An addin older than v0.8.36 sends no `skippedFields` key at all. That is
+    "cannot tell", not "a field was skipped" — no warning is invented."""
+    async def run():
+        mock = MockRevitMCPClient(legacy_silent_schedule_rename=True)
+        return await create_verification_schedules(
+            mock, [_dept_record()], catalog=OSTCatalog.load()
+        )
+
+    r = asyncio.run(run())[0]
+    assert r.status == "created"
+    assert not any("column not added" in w for w in r.warnings)
 
 
 def test_idempotent_second_run_reports_existing_with_new_naming_convention():

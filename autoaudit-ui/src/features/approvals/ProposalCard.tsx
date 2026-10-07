@@ -28,6 +28,10 @@ export function ProposalCard({ proposal }: { proposal: ApprovalRecord }) {
   const restore = useRestoreApproval();
   const [confirmIgnore, setConfirmIgnore] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState(false);
+  // L2-05: the record has said which values a MODEL proposed since GĐ3 and the
+  // API forwards it; this card was the last link that dropped it. Approve-gating
+  // exists because a model produced the value — the approver must see that.
+  const aiCount = proposal.fixes.filter((fx) => fx.value_source === "llm").length;
 
   return (
     <div className="card flex flex-col gap-2 p-3">
@@ -42,6 +46,11 @@ export function ProposalCard({ proposal }: { proposal: ApprovalRecord }) {
         <Badge variant="outline" color={STATUS_COLOR[proposal.status]}>
           {STATUS_LABEL[proposal.status]}
         </Badge>
+        {aiCount > 0 && (
+          <Badge variant="solid" color="var(--primary)" title={strings.approvals.aiProposedHint}>
+            {strings.approvals.aiProposedCount(aiCount)}
+          </Badge>
+        )}
         <span className="text-caption ml-auto">
           {formatDateTime(proposal.created_at)}
         </span>
@@ -82,7 +91,19 @@ export function ProposalCard({ proposal }: { proposal: ApprovalRecord }) {
                     </span>
                   )}
                 </td>
-                <td className="pr-3 font-mono-val">{fx.new_value}</td>
+                <td className="pr-3 font-mono-val">
+                  {fx.new_value}
+                  {fx.value_source === "llm" && (
+                    <Badge
+                      variant="outline"
+                      color="var(--primary)"
+                      className="ml-2"
+                      title={strings.approvals.aiProposedHint}
+                    >
+                      {strings.approvals.aiProposed}
+                    </Badge>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

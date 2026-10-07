@@ -18,7 +18,7 @@ import os
 import pathlib
 import sys
 from collections.abc import Callable, Sequence
-from contextlib import AsyncExitStack, nullcontext
+from contextlib import AsyncExitStack, ExitStack, nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +33,7 @@ from bim_orchestrator.agents.revit_query import RevitQueryAgent
 from bim_orchestrator.policies.ost_catalog import OSTCatalog
 from bim_orchestrator.graph import build_graph
 from bim_orchestrator.llm.factory import (
+    agent_flag_overrides,
     build_llm_run_context,
     llm_diagnostic_enabled,
     llm_flag_problems,
@@ -104,6 +105,16 @@ DEFAULT_APPROVALS_DIR = PROJECT_ROOT / "runs" / "approvals"
 # demo` branch deliberately KEEPS the shared dir — the AU webUI arc shows its
 # proposals in the Approvals view (see the comment at that call site).
 DEFAULT_DEMO_APPROVALS_DIR = PROJECT_ROOT / "runs" / "approvals_demo"
+# Demo runs (`--demo`, and `mode: demo` through the service) write their
+# findings.json + the two side reports HERE, never at PROJECT_ROOT. The root
+# copies are tracked, so a demo overwrote another session's real Snowdon
+# findings three times in one week — a MODIFICATION the deletion hook cannot
+# see. `runs/` is gitignored, so nothing under here can ever be committed by
+# accident. Run FOLDERS stay in `runs/` (the panel lists them from there);
+# only the cross-run artifacts move, and a demo run is excluded from the
+# trend table and from delta baselines by its metadata `demo: true` stamp.
+DEFAULT_DEMO_DIR = PROJECT_ROOT / "runs" / "demo"
+DEFAULT_DEMO_FINDINGS_OUT = DEFAULT_DEMO_DIR / "findings.json"
 # v1 task M: every --check / --apply / --run / --run-revit invocation gets
 # its own runs/run-<id>/ folder with metadata.json + trace.md + outcomes.json
 # alongside the legacy findings.json + side reports.
@@ -329,8 +340,13 @@ def _finish_run_recording(
     rules_paths: Path | Sequence[Path] | None = None,
     max_elements: int | None = None,
     banner: str | None = None,
+    demo: bool = False,
 ) -> None:
     """v1 task L+M: write metadata + outcomes + trace, then drop the contextvar.
+
+    ``demo`` stamps ``metadata.json`` (so the trend table and delta baselines
+    can leave the run out) and skips the cross-run trend refresh — a
+    simulated 20-element model has no business in a table of real audits.
 
     Also mirrors findings.json + the 2 side reports into the run folder so
     each run is fully self-contained (the legacy paths at PROJECT_ROOT remain
@@ -363,7 +379,7 @@ def _finish_run_recording(
         )
         folder.write_outcomes(state)
         write_side_reports(state, folder.findings_path)
-        folder.write_metadata(status=status, state=state)
+        folder.write_metadata(status=status, state=state, demo=demo)
         folder.write_trace(collector, project_id=state.get("project_id"))
 
         # P3-1: audit-axes envelopes were persisted into <run>/axes/ by the
@@ -467,10 +483,13 @@ def _finish_run_recording(
             log.warning("run_recorder.delta_report_failed", error=str(exc))
 
         # v1 task V-3: refresh the cross-run trend (best-effort -- never raise).
-        try:
-            write_trend_report(DEFAULT_RUNS_DIR)
-        except Exception as exc:
-            log.warning("run_recorder.trend_refresh_failed", error=str(exc))
+        # Not for a demo: the trend is the history of REAL audits, and the
+        # renderer also skips `demo: true` folders when a real run refreshes it.
+        if not demo:
+            try:
+                write_trend_report(DEFAULT_RUNS_DIR)
+            except Exception as exc:
+                log.warning("run_recorder.trend_refresh_failed", error=str(exc))
 
         log.info(
             "run_recorder.finished",
@@ -1352,6 +1371,10 @@ async def run_revit(
     # Opt-IN strictness: a partial-coverage run stays exit 0 by default
     # (it IS a real audit); set this for unattended/scheduled audits.
     fail_on_partial_coverage: bool = False,
+    # Simulated run (mock clients). Stamps metadata, keeps the run out of the
+    # trend/baseline, and is the caller's promise that `findings_out` points
+    # under DEFAULT_DEMO_DIR rather than at the tracked root copies.
+    demo: bool = False,
 ) -> int:
     """Live E2E run against Revit + Forma simultaneously.
 
@@ -1558,6 +1581,8 @@ async def run_revit(
             async with FormaMCPClient(forma_config) as forma_client:
                 final_state = await _run_with_forma(forma_client)
 
+        # The demo dir does not exist on a fresh checkout (runs/ is ignored).
+        findings_out.parent.mkdir(parents=True, exist_ok=True)
         findings_out.write_text(json.dumps(final_state["findings"], indent=2, default=str))
         review_path, dataq_path = write_side_reports(final_state, findings_out)
         _print_run_revit_summary(final_state, dry_run_only=dry_run_only)
@@ -1577,6 +1602,7 @@ async def run_revit(
             folder, collector, token, final_state,
             status=final_state.get("status", "unknown"), rules=qc.rules,
             rules_paths=rules_path, max_elements=max_elements, banner=banner,
+            demo=demo,
         )
         _print_run_folder_notice(folder)
         return rc
@@ -1584,6 +1610,7 @@ async def run_revit(
         _finish_run_recording(
             folder, collector, token, final_state, status="failed", rules=qc.rules,
             rules_paths=rules_path, max_elements=max_elements, banner=banner,
+            demo=demo,
         )
         raise
 
@@ -1640,6 +1667,13 @@ async def audit(
         return 2
 
     services = load_audit_services(services_path)
+    # The profile's `llm:` block switches agents on for THIS run only. Entered
+    # here, before anything reads a flag (the satellites don't; the dispatch
+    # below does, via build_llm_run_context / make_*_agent / _stamp_llm_status),
+    # and closed in the `finally` so a crash mid-run cannot leave the service
+    # process with the AI layer stuck on for every audit that follows.
+    flag_scope = ExitStack()
+    flag_scope.enter_context(agent_flag_overrides(profile.llm.env_overrides()))
     staging = Path(tempfile.mkdtemp(prefix="autoaudit-axes-"))
     try:
         axes = await run_audit_axes(profile, services, staging)
@@ -1665,6 +1699,10 @@ async def audit(
                     "mode": profile.run.mode,
                     "rules": [Path(r).name for r in profile.rules],
                     "propose_only": profile.run.propose_only,
+                    # Which agents the PROFILE asked for. metadata.json's
+                    # llm_status says what was requested at run time (this
+                    # plus any process flag) and what actually got wired.
+                    "llm": profile.llm.model_dump(),
                 }, indent=2),
                 encoding="utf-8",
             )
@@ -1722,11 +1760,15 @@ async def audit(
 
                 demo_revit, demo_forma = build_demo_clients()
                 return await run_revit(
-                    rules_paths, autonomy_path, findings_out,
+                    # Never the caller's findings_out: through the service that
+                    # is PROJECT_ROOT/findings.json — tracked, and shared with
+                    # every real audit. A demo writes under runs/demo/.
+                    rules_paths, autonomy_path, DEFAULT_DEMO_FINDINGS_OUT,
                     limit=profile.run.max_issues,
                     rule_filter=None,
                     dry_run_only=profile.run.dry_run,
                     published=False,
+                    demo=True,
                     issue_subtype_id=None,
                     max_iterations=max(max_iterations, 4),
                     checkpoint_dir=checkpoint_dir,
@@ -1797,6 +1839,7 @@ async def audit(
                 issue_registry=DEFAULT_RUNS_DIR / "issue_registry.json",
             )
     finally:
+        flag_scope.close()
         shutil.rmtree(staging, ignore_errors=True)
 
 
@@ -1934,7 +1977,10 @@ async def demo(
     rules_path: Path | Sequence[Path],
     *,
     autonomy_path: Path = DEFAULT_AUTONOMY_PATH,
-    findings_out: Path = DEFAULT_FINDINGS_OUT,
+    # None → DEFAULT_DEMO_FINDINGS_OUT, resolved at CALL time so a test can
+    # point the constant elsewhere. The CLI forwards None unless the operator
+    # passed an explicit --findings-out (same rule as approvals_dir, C-1).
+    findings_out: Path | None = None,
     max_iterations: int = 4,
     checkpoint_dir: Path = DEFAULT_CHECKPOINT_DIR,
     # C-1: simulated proposals never share the production approvals dir.
@@ -1964,6 +2010,8 @@ async def demo(
 
     print(_DEMO_BANNER)
     revit_client, forma_client = build_demo_clients()
+    if findings_out is None:
+        findings_out = DEFAULT_DEMO_FINDINGS_OUT
 
     captured_folder: RunFolder | None = None
 
@@ -1992,6 +2040,7 @@ async def demo(
         project_id=DEMO_PROJECT_ID,
         on_folder=_capture,
         banner=_DEMO_REPORT_BANNER,
+        demo=True,
     )
 
     if captured_folder is not None:
@@ -2373,6 +2422,7 @@ def doctor_checks() -> list[dict[str, str]]:
     import importlib.util
 
     from bim_orchestrator.mcp_clients.forma import _vendor_exe
+    from bim_orchestrator.mcp_clients.forma import launch_target as _forma_launch_target
     from bim_orchestrator.policies.audit_profile import load_audit_services
 
     rows: list[dict[str, str]] = []
@@ -2391,8 +2441,17 @@ def doctor_checks() -> list[dict[str, str]]:
     env_path = PROJECT_ROOT / ".env"
     _check(".env present", env_path.exists(), str(env_path))
 
+    # "Is Forma launchable", not "is there a .exe": the SEA exe is only one of
+    # the two ways this server runs (the other is `node dist/index.js`), so
+    # asking for the Windows filename reported Forma missing on every
+    # non-Windows install. Shares one resolver with the UI's Forma dot.
+    launchable, launch_detail = _forma_launch_target()
+    _check("forma-mcp launchable", launchable, launch_detail)
+
+    # Integrity stays scoped to the DOWNLOADED exe — it answers "is this still
+    # the verified binary" for an unsigned artefact that will hold ACC
+    # credentials. A locally built dist/index.js has no such sidecar.
     exe = _vendor_exe("forma-mcp")
-    _check("forma-mcp.exe present", exe is not None, exe or "not found under vendor/forma-mcp/")
     if exe is not None:
         ok, detail = _forma_exe_integrity(pathlib.Path(exe))
         _check("forma-mcp.exe integrity", ok, detail)
@@ -3038,7 +3097,15 @@ def _dispatch(args: argparse.Namespace) -> int:
             demo(
                 rules_paths,
                 autonomy_path=args.autonomy,
-                findings_out=args.findings_out,
+                # Same rule as approvals_dir below: the CLI default is the
+                # PRODUCTION path (tracked findings.json at the root). Forward
+                # only an explicit --findings-out; otherwise demo() uses
+                # runs/demo/.
+                findings_out=(
+                    args.findings_out
+                    if args.findings_out != DEFAULT_FINDINGS_OUT
+                    else None
+                ),
                 max_iterations=max_iterations,
                 checkpoint_dir=args.checkpoint_dir,
                 # C-1: the CLI default points at the PRODUCTION dir; --demo

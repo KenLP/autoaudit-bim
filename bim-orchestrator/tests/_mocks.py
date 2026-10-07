@@ -20,13 +20,18 @@ import copy
 from dataclasses import dataclass, field
 from typing import Any, Self
 
+from bim_orchestrator.mcp_clients.forma import FormaNamed, FormaProject
 from bim_orchestrator.policies.rules_schema import Rule, RuleAutofill, RuleSet
 
-# LIVE PROBE 2026-07-12 (addin v0.8.13, F1): characters Revit forbids in a
-# view/schedule name. MockRevitMCPClient.create_schedule uses this to mirror
-# the addin's silent fallback-to-default behaviour (F1/F3) instead of
-# honouring a name the real addin would quietly refuse.
-_REVIT_FORBIDDEN_VIEW_NAME_CHARS = set("[]{}|;<>?~:\\")
+# Characters Revit forbids in a view/schedule name — RevitMCPServer v0.8.36
+# measured them ONE AT A TIME on Revit 2027: the twelve below plus the
+# backtick, which the first probe here (2026-07-12, addin v0.8.13) missed.
+# `*` is ALLOWED in a view name (unlike a family name) — do not add it; a
+# mock stricter than Revit is as misleading as a looser one.
+# MockRevitMCPClient.create_schedule uses this to answer the way the addin
+# does: 400 invalid_chars today, or the pre-0.8.36 silent fallback when
+# `legacy_silent_schedule_rename` is set.
+_REVIT_FORBIDDEN_VIEW_NAME_CHARS = set("[]{}|;<>?~:\\`")
 
 
 def make_test_ruleset(
@@ -341,6 +346,33 @@ class MockFormaMCPClient:
             "aecdm_list_element_groups", {"project_id": project_id}
         )
         return list(structured.get("element_groups", []))
+
+    # v1.7-R25: the project picker's two reads. The real client parses the
+    # AECDM tools' TEXT output into these dataclasses; this mock's fixtures
+    # are already structured dicts, so it builds the SAME return types
+    # straight from them rather than round-tripping through a fake text
+    # table. Parity is about what a caller gets back, and a caller of these
+    # gets FormaNamed / FormaProject either way.
+    async def browse_projects(self) -> tuple[FormaNamed, list[FormaProject]]:
+        hubs = await self.list_aecdm_hubs()
+        if not hubs:
+            raise RuntimeError("No AECDM hubs found — check Forma MCP connection.")
+        hub = FormaNamed(id=hubs[0].get("id", ""), name=hubs[0].get("name", ""))
+        projects = [
+            FormaProject(
+                name=p.get("name", ""),
+                aecdm_id=p.get("aecdm_id") or p.get("id", ""),
+                dm_id=p.get("dm_id", ""),
+            )
+            for p in await self.list_aecdm_projects(hub.id)
+        ]
+        return hub, projects
+
+    async def browse_element_groups(self, aecdm_project_id: str) -> list[FormaNamed]:
+        return [
+            FormaNamed(id=g.get("id", ""), name=g.get("name", ""))
+            for g in await self.list_element_groups(aecdm_project_id)
+        ]
 
     async def get_element_properties(
         self, element_group_id: str, element_id: str, category: str
@@ -1020,6 +1052,18 @@ class MockRevitMCPClient:
     # envelope — the addin's way of saying "I skipped a field/filter". Empty
     # by default (clean configure); set per-test to exercise the honesty path.
     configure_warnings: list[str] = field(default_factory=list)
+    # RevitMCPServer v0.8.36 changed revit_create_schedule's answer to a name
+    # Revit refuses: it used to fall back to Revit's own default ("Door
+    # Schedule 3") and return ok; it now raises — 400 invalid_chars for a
+    # forbidden character, 409 name_collision for a duplicate — and rolls the
+    # half-made schedule back. The default here is the CURRENT addin. Set this
+    # to model an older install, which verification_views still defends
+    # against with _check_name_applied.
+    legacy_silent_schedule_rename: bool = False
+    # Field names revit_create_schedule should report under `skippedFields`
+    # (v0.8.36: names that match no schedulable field — previously dropped
+    # without a word). Empty by default, like configure_warnings.
+    create_schedule_skipped_fields: list[str] = field(default_factory=list)
     calls: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -1591,16 +1635,42 @@ class MockRevitMCPClient:
             sid = 900000 + len(self.calls_to("revit_create_schedule"))
             requested_name = args.get("name")
             name = requested_name
-            if requested_name and (
-                any(ch in requested_name for ch in _REVIT_FORBIDDEN_VIEW_NAME_CHARS)
-                or requested_name in {v.get("name") for v in self.all_views}
-            ):
-                # LIVE PROBE 2026-07-12 (addin v0.8.13, F1/F3): Revit silently
-                # refuses a view name with forbidden characters (`[]{}|;<>?~:\`)
-                # AND silently refuses a duplicate name — no error either way,
-                # just a fallback to its own default. Mirror that here so a
-                # verification_views test can't stay green against a naming
-                # convention the real addin would quietly reject.
+            bad_chars = sorted(
+                {ch for ch in (requested_name or "") if ch in _REVIT_FORBIDDEN_VIEW_NAME_CHARS}
+            )
+            duplicate = bool(requested_name) and requested_name in {
+                v.get("name") for v in self.all_views
+            }
+            if (bad_chars or duplicate) and not self.legacy_silent_schedule_rename:
+                # RevitMCPServer v0.8.36 (live, Revit 2027, 17/17): refuse, with
+                # the same codes rename_element already used for family/type
+                # names. Raised before anything is appended to all_views — the
+                # addin throws inside the dispatcher's transaction, so nothing
+                # half-made survives (measured: 113 schedules before and after).
+                from bim_orchestrator.mcp_clients.revit import RevitEnvelopeError
+                if bad_chars:
+                    raise RevitEnvelopeError(
+                        tool=tool, code="invalid_chars",
+                        message=(
+                            f"Revit does not allow in a view name: "
+                            f"{' '.join(bad_chars)}."
+                        ),
+                    )
+                existing = next(
+                    v.get("id") for v in self.all_views
+                    if v.get("name") == requested_name
+                )
+                raise RevitEnvelopeError(
+                    tool=tool, code="name_collision",
+                    message=(
+                        f"A Schedule view named '{requested_name}' already "
+                        f"exists (id {existing})."
+                    ),
+                )
+            if bad_chars or duplicate:
+                # Pre-0.8.36 addin (LIVE PROBE 2026-07-12, v0.8.13, F1/F3):
+                # Revit's refusal was swallowed and the schedule kept Revit's
+                # own default name, reported as ok.
                 name = f"Door Schedule {sid - 900000}"
             # v1.5-R6: mirror a real addin's behaviour — a committed (non-
             # dry-run) create makes the schedule show up in a later
@@ -1610,12 +1680,17 @@ class MockRevitMCPClient:
             # sees the 1st run's schedules as "existing").
             if not args.get("dryRun") and name:
                 self.all_views.append({"id": sid, "name": name, "viewType": "Schedule"})
-            return {
+            data: dict[str, Any] = {
                 "scheduleId": sid,
                 "name": name,
                 "category": args.get("category"),
                 "fields": args.get("fields") or [],
             }
+            if not self.legacy_silent_schedule_rename:
+                # v0.8.36+ reports the field names it could not add. An older
+                # addin sends no such key at all — absent, not empty.
+                data["skippedFields"] = list(self.create_schedule_skipped_fields)
+            return data
         if tool == "revit_configure_schedule":
             filters = args.get("filters") or []
             # Wire contract, tracking the REAL bridge by version:

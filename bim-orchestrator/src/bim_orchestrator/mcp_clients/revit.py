@@ -23,7 +23,6 @@ import asyncio
 import contextlib
 import json
 import os
-import shlex
 from collections.abc import Mapping, Sequence
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
@@ -34,6 +33,8 @@ import httpx
 import structlog
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+from bim_orchestrator.mcp_clients._server_args import split_server_args
 
 log = structlog.get_logger(__name__)
 
@@ -138,7 +139,7 @@ class RevitMCPConfig:
         raw_args = os.environ.get("REVIT_MCP_SERVER_ARGS", "")
         if not raw_args and cwd:
             raw_args = "dist/index.js"  # vendor default entrypoint
-        args = shlex.split(raw_args) if raw_args else []
+        args = split_server_args(raw_args)
         env = {k: os.environ[k] for k in _PASSTHROUGH_ENV_KEYS if k in os.environ}
         if cwd:
             log.debug(

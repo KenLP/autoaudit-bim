@@ -7,6 +7,8 @@ Coverage:
     non-numeric values, error logging on failure.
   * QCAgent integration smoke — a rule with ``unit: "m"`` against a
     raw feet value evaluates correctly.
+  * aecdm_value_to_storage_unit() — AECDM's SI values land in Revit's
+    storage units; anything it cannot place is returned untouched.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ import pytest
 
 from bim_orchestrator.policies.revit_units import (
     REVIT_STORAGE_UNITS,
+    aecdm_value_to_storage_unit,
     convert,
     convert_to_rule_unit,
 )
@@ -123,6 +126,49 @@ class TestRevitStorageUnitsTable:
         # (feet) and compare < 1000 → every run falsely flagged.
         result = convert_to_rule_unit(3.937008, "Actual Run Width", "mm")
         assert result == pytest.approx(1200.0, rel=1e-3)
+
+
+class TestAecdmValueToStorageUnit:
+    """AECDM returns SI even for imperial models; the engine assumes Revit's
+    storage units. Values below are live AECDM readings of an imperial sample
+    model, cross-checked against the dimensions written in its own Comments."""
+
+    def test_length_metres_to_feet(self):
+        # 13'-0" ceiling, as AECDM reports it.
+        assert aecdm_value_to_storage_unit(
+            "Unbounded Height", 3.962399999999996
+        ) == pytest.approx(13.0, abs=1e-9)
+
+    def test_area_square_metres_to_square_feet(self):
+        # Closet 4'-6" x 2'-0" = 9.0 sf drawn; AECDM area 0.8322564 m².
+        assert aecdm_value_to_storage_unit("Area", 0.8322564) == pytest.approx(
+            8.9583, abs=1e-4
+        )
+
+    def test_volume_cubic_metres_to_cubic_feet(self):
+        assert aecdm_value_to_storage_unit("Volume", 93.72717) == pytest.approx(
+            3309.9438, abs=1e-3
+        )
+
+    def test_numeric_string_converts(self):
+        assert aecdm_value_to_storage_unit("Unbounded Height", "3.9624") == (
+            pytest.approx(13.0, abs=1e-9)
+        )
+
+    def test_unknown_storage_unit_is_untouched(self):
+        # No known storage unit → never guess a factor.
+        assert aecdm_value_to_storage_unit("Room Width", 4.8768) == 4.8768
+
+    def test_non_dimensional_param_is_untouched(self):
+        # Text that happens to parse as a number stays text.
+        assert aecdm_value_to_storage_unit("Number", "07") == "07"
+
+    @pytest.mark.parametrize("value", [None, "4'-6\"W", True, False])
+    def test_non_numeric_value_is_untouched(self, value):
+        assert aecdm_value_to_storage_unit("Area", value) is value
+
+    def test_missing_param_name_is_untouched(self):
+        assert aecdm_value_to_storage_unit(None, 3.9624) == 3.9624
 
 
 class TestQCAgentIntegration:

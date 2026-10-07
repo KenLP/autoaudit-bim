@@ -594,6 +594,12 @@ def render_trend_report(runs_root: Path, *, limit: int = 20) -> str:
         if rec is None:
             continue
         meta, outcomes = rec
+        if meta.get("demo"):
+            # A simulated 20-element run is not a data point in the history
+            # of real audits; one such row already turned a Snowdon trend
+            # into nonsense (2026-08-26). Skipped here, not only at write
+            # time, so a real run's refresh cannot pull it back in.
+            continue
         parsed.append((f, meta, outcomes))
 
     if not parsed:

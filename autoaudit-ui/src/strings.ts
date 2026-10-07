@@ -291,9 +291,35 @@ export const strings = {
     rulesFilesTitle: "Rules files",
     emptyProfiles: "No profiles found.",
 
+    projectTitle: "Project",
+    projectNote:
+      "Which ACC/Forma project this pilot audits. Saving takes effect on the next run — no restart.",
+    projectHub: (name: string) => `Hub: ${name}`,
+    projectHubUnknown: "Hub: not loaded",
+    projectLabel: "Project",
+    projectPlaceholder: "Select a project…",
+    projectLoading: "Loading projects from Forma…",
+    projectModelLabel: "Model",
+    projectModelPlaceholder: "Select a model…",
+    projectModelLoading: "Loading models…",
+    projectModelNone: "No models found in this project.",
+    projectModelNeedsProject: "Select a project first.",
+    projectRetry: "Retry",
+    projectManualTitle: "Enter IDs manually",
+    projectManualNote:
+      "Use this when the Forma browse is unavailable (bad credentials, timeout, or the APS robot has not been invited to the project yet).",
+    projectManualDm: "Project ID (DM / Issues — b.<uuid>)",
+    projectManualAecdm: "AECDM Project ID (urn:adsk.workspace:prod.project:<uuid>)",
+    projectManualGroup: "Element Group ID (model)",
+    projectSave: "Save",
+    projectSaving: "Saving…",
+    projectSaved: "Project saved",
+    projectSelected: (project: string, model: string) =>
+      `Selected: ${project || "—"} · ${model || "no model"}`,
+
     connectionsTitle: "Connections",
     connectionsNote:
-      "Change the ACC/Forma project or keys here when you switch models. Values are stored in .env on this machine — never shown in full once set. Restart the service for saved changes to take effect.",
+      "Credentials and paths for this machine. Values are stored in .env — never shown in full once set. Restart the service for saved changes to take effect. To change which project is audited, use the Project card above.",
     envGroupForma: "Forma / ACC",
     envGroupAnthropic: "Anthropic",
     envGroupOther: "Other",
@@ -356,6 +382,7 @@ export const strings = {
     profileRulesCount: (n: number) => `${n} rule${n === 1 ? "" : "s"}`,
     rulesSelect: "Rules",
     modeSelect: "Mode",
+    modeCheck: "Check only (read-only)",
     modeApply: "Issues only (ACC)",
     modeRunRevit: "Full run (Revit + ACC)",
     modeDemo: "Demo (mock)",
@@ -380,6 +407,7 @@ export const strings = {
       query: "Query",
       qc: "Quality check",
       design: "Design",
+      llm: "AI agents",
       record: "Recording",
       run: "Finished",
     },
@@ -389,6 +417,8 @@ export const strings = {
   },
   runDetail: {
     iterations: (n: number) => `${n} iteration${n === 1 ? "" : "s"}`,
+    llmTile: "LLM tokens",
+    llmLine: "AI agents",
     rules: "Rules",
     findings: "Findings",
     exportCsv: "Export CSV",
@@ -413,6 +443,12 @@ export const strings = {
     tabVerificationReport: "Verification report",
     tabTrace: "Trace",
     noSelection: "Select a finding to see details",
+    diagnosis: "Diagnosis",
+    diagnosisAction: "Suggested action",
+    diagnosisBy: (source: string, confidence?: number) =>
+      confidence == null
+        ? `by ${source}`
+        : `by ${source} · confidence ${confidence.toFixed(2)}`,
     detailTitle: "Finding detail",
     artifactMissing: (name: string) => `This run has no ${name}.`,
     confirmExportTitle: "Export report",
@@ -466,6 +502,10 @@ export const strings = {
     statusAppliedIssueOpen: "Applied — issue open",
     statusIgnored: "Ignored",
     inheritedFromHost: "host",
+    aiProposed: "AI-proposed",
+    aiProposedCount: (n: number) => `${n} AI-proposed`,
+    aiProposedHint:
+      "A language model proposed this value. It re-validated through the same rule that flagged the element, and it is never applied without approval.",
     resultBanner: (applied: number, held: number) =>
       `Applied ${applied}, held back ${held}`,
     heldExplanation:

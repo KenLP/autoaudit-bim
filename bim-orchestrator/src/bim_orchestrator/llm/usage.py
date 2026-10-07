@@ -64,6 +64,11 @@ class UsageRecorder:
         self._blocked = 0                          # calls refused by the budget
         self._inflight = 0                         # reserved, not yet settled
         self._models: set[str] = set()             # P2-02: model ids actually used
+        # Token accounting per agent, as the PROVIDER reported it. Calls are
+        # what the budget counts; tokens are what the bill counts — and what
+        # an audience asks about ("how much did those three agents cost?").
+        self._tokens_in: Counter[str] = Counter()
+        self._tokens_out: Counter[str] = Counter()
         self._lock = threading.Lock()
 
     def check(self, agent: str) -> None:
@@ -92,7 +97,13 @@ class UsageRecorder:
             self._inflight += 1
 
     def record(
-        self, agent: str, *, seconds: float, ok: bool, model: str | None = None
+        self,
+        agent: str,
+        *,
+        seconds: float,
+        ok: bool,
+        model: str | None = None,
+        tokens: tuple[int, int] | None = None,
     ) -> None:
         """Settle a call: move it from reserved to completed.
 
@@ -124,10 +135,30 @@ class UsageRecorder:
                 self._failed[agent] += 1
             if model:
                 self._models.add(str(model))
+            if tokens is not None:
+                # ``tokens`` is ``(input, output)`` straight from the provider;
+                # None means "not reported" (fake client, failed call, an SDK
+                # that dropped the field) and is deliberately NOT counted as 0
+                # — a run whose tokens read 0 must mean the provider said 0.
+                tin, tout = tokens
+                self._tokens_in[agent] += max(0, int(tin))
+                self._tokens_out[agent] += max(0, int(tout))
 
     @property
     def total_calls(self) -> int:
         return sum(self._calls.values())
+
+    @property
+    def input_tokens(self) -> int:
+        return sum(self._tokens_in.values())
+
+    @property
+    def output_tokens(self) -> int:
+        return sum(self._tokens_out.values())
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
 
     @property
     def total_seconds(self) -> float:
@@ -157,6 +188,13 @@ class UsageRecorder:
             "blocked": self._blocked,
             "max_calls": self.max_calls,
             "models": self.models,
+            "total_tokens": self.total_tokens,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "tokens_by_agent": {
+                a: {"input": self._tokens_in[a], "output": self._tokens_out[a]}
+                for a in sorted(set(self._tokens_in) | set(self._tokens_out))
+            },
         }
 
     def format_line(self) -> str | None:
@@ -165,6 +203,13 @@ class UsageRecorder:
             return None
         breakdown = " / ".join(f"{a} {n}" for a, n in sorted(self._calls.items()))
         line = f"LLM: {self.total_calls} calls · {self.total_seconds:.1f}s total across calls"
+        if self.total_tokens:
+            # Only when the provider reported something — a run on the fake
+            # client or an older SDK must not print "0 tokens" as if measured.
+            line += (
+                f" · {self.total_tokens:,} tokens"
+                f" (in {self.input_tokens:,} / out {self.output_tokens:,})"
+            )
         if breakdown:
             line += f" ({breakdown})"
         if self._models:
@@ -206,6 +251,7 @@ class MeteredLLMClient(LLMClient):
             self.recorder.record(
                 self.agent, seconds=time.perf_counter() - t0, ok=ok,
                 model=getattr(self.inner, "model", None),   # P2-02
+                tokens=getattr(self.inner, "last_usage", None),
             )
 
     async def complete_json(
@@ -229,6 +275,7 @@ class MeteredLLMClient(LLMClient):
             self.recorder.record(
                 self.agent, seconds=time.perf_counter() - t0, ok=ok,
                 model=getattr(self.inner, "model", None),   # P2-02
+                tokens=getattr(self.inner, "last_usage", None),
             )
 
 

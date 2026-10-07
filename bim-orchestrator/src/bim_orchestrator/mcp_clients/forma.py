@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
-import shlex
+import re
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +18,8 @@ from typing import Any, Self
 import structlog
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+from bim_orchestrator.mcp_clients._server_args import split_server_args
 
 log = structlog.get_logger(__name__)
 
@@ -37,6 +39,57 @@ def _vendor_exe(server_name: str) -> str | None:
     return str(candidate) if candidate.exists() else None
 
 
+def launch_target(config: FormaMCPConfig | None = None) -> tuple[bool, str]:
+    """Can a Forma MCP server actually be started? → ``(ok, detail)``.
+
+    The single source of truth behind the UI's Forma dot
+    (``service/app.probe_forma``) and ``--doctor``. Both used to ask whether
+    ``vendor/forma-mcp/forma-mcp.exe`` exists, which is only ONE of the two
+    ways this server runs: with no exe present the client falls back to
+    ``node dist/index.js``. That made every non-Windows install report Forma
+    missing while it was in fact connected (found 2026-09-13 on macOS).
+
+    Asks :meth:`FormaMCPConfig.from_env` — the resolver the client itself
+    uses — then checks the two things a subprocess needs: the command
+    resolves, and its entrypoint exists. ``detail`` is a human line for the
+    doctor table.
+
+    "Launchable" deliberately does NOT mean "credentials are valid": that is
+    what the Setup page's *Test Forma* answers.
+    """
+    import shutil
+
+    if config is None:
+        try:
+            config = FormaMCPConfig.from_env()
+        except Exception as exc:  # pragma: no cover - defensive
+            return False, f"config error: {exc}"
+
+    command = Path(config.command)
+    if command.is_absolute() or len(command.parts) > 1:
+        if not command.is_file():
+            return False, f"command not found: {config.command}"
+        resolved_command = str(command)
+    else:
+        found = shutil.which(config.command)
+        if found is None:
+            return False, f"command not on PATH: {config.command}"
+        resolved_command = found
+
+    # No args → the command IS the server (the SEA exe), checked above.
+    if not config.args:
+        return True, f"SEA exe: {resolved_command}"
+
+    # Otherwise args[0] is the entrypoint script; a relative one resolves
+    # against cwd, exactly as the subprocess will resolve it.
+    entrypoint = Path(config.args[0])
+    if not entrypoint.is_absolute() and config.cwd:
+        entrypoint = Path(config.cwd) / entrypoint
+    if not entrypoint.is_file():
+        return False, f"entrypoint not found: {entrypoint}"
+    return True, f"{resolved_command} {entrypoint}"
+
+
 def _vendor_cwd(server_name: str) -> str | None:
     """Return vendor/<server_name> path if its dist/index.js exists there.
 
@@ -45,6 +98,126 @@ def _vendor_cwd(server_name: str) -> str | None:
     """
     candidate = _APP_ROOT / "vendor" / server_name
     return str(candidate) if (candidate / "dist" / "index.js").exists() else None
+
+
+# ── browse: parsing the AECDM list tools' TEXT output ───────────────────────
+#
+# The AECDM list tools (aecdm_list_hubs / aecdm_list_projects /
+# aecdm_list_element_groups) return a list[TextContent] whose ``.text`` is a
+# human-readable table, NOT JSON. Turning that back into data is this client's
+# job, not a UI's — the two parsers below moved here from
+# ``streamlit_app/app.py`` (v1.7-R25) so the Streamlit picker and the web UI's
+# Setup card read ONE parser. Both shapes documented here were recorded live
+# against the running server on the dates given.
+
+
+@dataclass(frozen=True)
+class FormaNamed:
+    """An id/name pair — a hub, or an element group (what a user calls a
+    "model")."""
+
+    id: str
+    name: str
+
+
+@dataclass(frozen=True)
+class FormaProject:
+    """One ACC/Forma project and BOTH of its ids.
+
+    ``aecdm_id`` (``urn:adsk.workspace:prod.project:<uuid>``) drives element
+    queries; ``dm_id`` (``b.<uuid>``) drives ``issues_*`` / ``dm_*`` /
+    ``reviews_*``. ``dm_id`` is ``""`` when a project has no linked DM/Issues
+    container — callers keep whatever DM id they already had rather than
+    blanking it.
+    """
+
+    name: str
+    aecdm_id: str
+    dm_id: str
+
+
+_ID_RE = re.compile(r"\(ID:\s*([^)]+)\)")
+# Leading decoration + whitespace ahead of the display name. Three characters
+# beyond the emoji blocks the Streamlit class covered, each one measured
+# against the LIVE server rather than guessed:
+#   ︎ ️  the variation selectors. An emoji in presentation form
+#          (🏗️ = U+1F3D7 U+FE0F) matched only its FIRST codepoint, leaving a
+#          stray selector glued to the name.
+#   •      the list bullet. U+2022 sits BELOW the U+2600 block, so a hub or
+#          element group returned as "• Autodesk APAC TS  (ID: ...)" — the
+#          actual live shape, seen 2026-09-05 — kept its bullet and the
+#          picker read "• Autodesk APAC TS".
+# All three are decoration; none is ever the first character of a real display
+# name, so widening the class cannot swallow one.
+_EMOJI_RE = re.compile(r"^[\U00010000-\U0010ffff\U00002600-\U000027ff︎️•\s\xa0]+")
+
+
+def parse_name_id_list(raw: object) -> list[FormaNamed]:
+    """Parse an AECDM list response into ``FormaNamed`` entries.
+
+    Live format observed 2026-06-11::
+
+        Found N AEC project(s):
+
+        🏢 Project Name  (ID: urn:adsk.workspace:prod.project:<uuid>)
+
+    The ``(ID: <value>)`` pattern is the anchor; whatever precedes it on the
+    same line is the display name, emoji stripped. A line carrying an id but
+    no name falls back to the first 40 characters of the id, so an entry is
+    never dropped just for being unnamed.
+    """
+    out: list[FormaNamed] = []
+    for item in raw if isinstance(raw, list) else [raw]:
+        text = getattr(item, "text", None)
+        if text is None:
+            text = str(item)
+        for line in text.splitlines():
+            m = _ID_RE.search(line)
+            if not m:
+                continue
+            eid = m.group(1).strip()
+            name = _EMOJI_RE.sub("", line[: m.start()]).strip()
+            out.append(FormaNamed(id=eid, name=name or eid[:40]))
+    return out
+
+
+def parse_aecdm_projects(raw: object) -> list[FormaProject]:
+    """Parse ``aecdm_list_projects`` into ``FormaProject`` entries.
+
+    Forma's dual-id format (observed 2026-06-19) returns BOTH project ids per
+    project, so ONE call resolves the AECDM URN *and* the DM/Issues id — no
+    name-matching, no hard-coded id. Live shape::
+
+        • <name>
+            AECDM id: urn:adsk.workspace:prod.project:<uuid>
+            DM/Issues id: b.<uuid>
+    """
+    out: list[FormaProject] = []
+    name: str | None = None
+    aecdm_id = ""
+    dm_id = ""
+
+    def _flush() -> None:
+        nonlocal name, aecdm_id, dm_id
+        if name and aecdm_id:
+            out.append(FormaProject(name=name, aecdm_id=aecdm_id, dm_id=dm_id))
+        name, aecdm_id, dm_id = None, "", ""
+
+    for item in raw if isinstance(raw, list) else [raw]:
+        text = getattr(item, "text", None)
+        if text is None:
+            text = str(item)
+        for line in text.splitlines():
+            s = line.strip()
+            if s.startswith("•"):  # a new project block starts
+                _flush()
+                name = s.lstrip("•").strip()
+            elif s.startswith("AECDM id:"):
+                aecdm_id = s.split(":", 1)[1].strip()
+            elif s.startswith("DM/Issues id:"):
+                dm_id = s.split(":", 1)[1].strip()
+    _flush()
+    return out
 
 
 @dataclass
@@ -73,7 +246,7 @@ class FormaMCPConfig:
         raw_args = os.environ.get("FORMA_MCP_SERVER_ARGS", "")
         if not raw_args and cwd:
             raw_args = "dist/index.js"  # vendor default entrypoint
-        args = shlex.split(raw_args) if raw_args else []
+        args = split_server_args(raw_args)
         # We deliberately pass NO APS_* / FORMA_* secrets through. The subprocess
         # loads them from its own .env (located at cwd) via `dotenv/config`.
         # Only PATH-like vars needed to launch node are inherited automatically.
@@ -162,6 +335,27 @@ class FormaMCPClient:
 
     async def list_element_groups(self, project_id: str) -> Any:
         return await self.call("aecdm_list_element_groups", {"project_id": project_id})
+
+    # --- browse (the project picker's two reads) ---
+
+    async def browse_projects(self) -> tuple[FormaNamed, list[FormaProject]]:
+        """``(hub, projects)`` for a project picker.
+
+        Resolves the AECDM hub URN first: the DM hub id kept in ``.env`` is a
+        ``b.<uuid>``, which the AECDM API rejects. The FIRST hub wins — the
+        same choice the Streamlit picker made, and callers surface the hub's
+        name so the user can see which one answered. Choosing among several
+        hubs is a deliberate follow-up, not an oversight.
+        """
+        hubs = parse_name_id_list(await self.list_aecdm_hubs())
+        if not hubs:
+            raise RuntimeError("No AECDM hubs found — check Forma MCP connection.")
+        hub = hubs[0]
+        return hub, parse_aecdm_projects(await self.list_aecdm_projects(hub.id))
+
+    async def browse_element_groups(self, aecdm_project_id: str) -> list[FormaNamed]:
+        """The models ("element groups") inside one AECDM project."""
+        return parse_name_id_list(await self.list_element_groups(aecdm_project_id))
 
     async def query_elements(
         self,

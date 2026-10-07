@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.8 — ACC project picker, and units that agree across backends
+
+### Pick the ACC project by name
+
+The Setup page lists your hubs, projects and models by name and stores both
+identifiers a project needs — the one for reading the model and the one for
+raising issues — so there is nothing to look up or paste. Switching project
+takes effect for the next audit without restarting the service.
+
+### The ACC connection outside Windows
+
+Without the bundled Windows executable, the ACC/Forma server can run from a
+Node checkout on macOS or Linux, and `--doctor` and the web UI check that
+same launch instead of looking for a Windows file. Windows paths written into
+`FORMA_MCP_SERVER_ARGS` / `REVIT_MCP_SERVER_ARGS` are kept intact.
+
+### Demo runs stay out of your results
+
+`--demo` and demo runs started from the web UI write under `runs/demo/` and
+no longer replace `findings.json` or the side reports of a real audit, and
+trend and delta reports skip them.
+
+### The optional AI layer, per audit profile
+
+With the optional AI extension installed, an audit profile can switch its
+agents on with an `llm:` block, so only the audits that ask for them make
+model calls. A run reports how many calls and tokens it used — on the command
+line, in the run's metadata, and in the web UI. Without the extension
+nothing changes.
+
+### The Results page
+
+The rule list, the findings table and the finding detail now sit side by side
+as designed, and an AI diagnosis on a finding is shown as readable text.
+
+### Dimension rules on the Forma / ACC path compare in the right units
+
+The ACC data model reports lengths, areas and volumes in metres, even for an
+imperial model, while rules and lookup tables are written in Revit's units
+(feet, square feet, cubic feet), so on this path a height or area rule
+compared feet against metres. AutoAudit now converts those values when it
+reads the model, with or without a `unit:` on the rule, so a height or area
+rule gives the same verdict whether the model is read from ACC or from a
+running Revit. The raw values are kept alongside for traceability.
+
+### Verification schedules on RevitMCPServer 0.8.36 and later
+
+The add-in now refuses a schedule name Revit will not accept instead of
+renaming it silently. AutoAudit recognises its duplicate-name answer, so a
+second `--create-verification-views` run reports the schedule as existing
+rather than as an error, and requested columns the add-in could not add now
+appear as warnings in the manifest. Older add-ins keep working as before.
+
 ## v1.7 — first public release
 
 AutoAudit reads a Revit or ACC model, checks it against rules you wrote in plain

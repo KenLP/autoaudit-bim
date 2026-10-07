@@ -105,8 +105,8 @@ Manual ACC Issues (Path A) created:
   - #1003 [AutoAudit] Doors -- demo.doors.width_min (1 non-compliant)
 
 Auto-fix proposal issues (approve-gated): 2 — open the Approvals tab to apply.
-Manual-review queue (0): <ROOT>/review_queue.md
-Data-quality report (2): <ROOT>/data_quality_report.md
+Manual-review queue (0): <ROOT>/runs/demo/review_queue.md
+Data-quality report (2): <ROOT>/runs/demo/data_quality_report.md
 {"run_id": "run-<ID>", "status": "converged", "events": 76, "event": "run_recorder.finished", "level": "info", "timestamp": "<TS>"}
 Run folder:    <ROOT>/runs/run-<ID>
 

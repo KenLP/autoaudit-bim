@@ -50,7 +50,18 @@ _DEGRADE_CODES = frozenset({"unknown_command", "command_not_found", "not_found",
 # get_views() doesn't (or can't) list schedules. Kept separate from
 # _DEGRADE_CODES on purpose: "existing" and "degraded" mean different things
 # to the reader of the manifest (one is success, the other is a real gap).
-_EXISTS_CODES = frozenset({"duplicate_name", "name_conflict", "already_exists", "duplicate"})
+#
+# `name_collision` is the code the addin ACTUALLY sends (RevitMCPServer
+# v0.8.36, HTTP 409 — reused from rename_element so a client handles one set
+# of codes). The other four were written here before the addin implemented
+# the rejection at all: guesses, one of them the name we had proposed to the
+# addin team. With only the guesses listed, the real 409 fell through to
+# status="error" and this fallback could never fire. The guesses stay for
+# forks or older bridges that may have adopted them.
+_EXISTS_CODES = frozenset({
+    "name_collision",
+    "duplicate_name", "name_conflict", "already_exists", "duplicate",
+})
 # v1.7-R22 (D-4): re-configuring an EXISTING schedule can fail two ways that
 # mean opposite things. A transport that simply has no configure_schedule
 # ("unknown_command"/404) leaves a schedule that still exists and is still
@@ -221,13 +232,17 @@ async def create_verification_schedules(
     treated as tool-owned, so re-applying overwrites hand edits to its sort
     and filters. Rename a schedule to keep manual changes.
 
-    Naming note (LIVE PROBE 2026-07-12, addin v0.8.13, F1): the name is
-    ``"AutoAudit - <rule_id>"`` — NOT bracketed. Revit forbids ``[ ] { } | ;
-    < > ? ~ :`` and backslash in a view name and the addin silently falls
-    back to its own default (e.g. "Door Schedule 3") instead of erroring, so
-    the old ``"[AutoAudit] <rule_id>"`` convention was NEVER actually applied
-    on a real Revit session — see :func:`_check_name_applied` for the
-    defence against this (and any other) silent rename.
+    Naming note: the name is ``"AutoAudit - <rule_id>"`` — NOT bracketed.
+    Revit forbids ``: { } [ ] | ; < > ? ~``, backslash and backtick in a view name
+    (``*`` is allowed — measured char by char, RevitMCPServer v0.8.36).
+    Addin **v0.8.36+** rejects such a name outright — HTTP 400
+    ``invalid_chars`` — and a duplicate with HTTP 409 ``name_collision``,
+    rolling the half-made schedule back either way. Before that (LIVE PROBE
+    2026-07-12, addin v0.8.13) it silently fell back to its own default
+    ("Door Schedule 3") and returned ok, which is why the old
+    ``"[AutoAudit] <rule_id>"`` convention was NEVER actually applied on a
+    real Revit session. :func:`_check_name_applied` is the defence against
+    that older behaviour; on a current addin it never fires.
     """
     grouped = _group_by_rule(check_trace)
     results: list[ScheduleResult] = []
@@ -343,6 +358,7 @@ async def create_verification_schedules(
             # name) instead of erroring — trust what it says it did, not what
             # we asked for.
             actual_name, renamed = _check_name_applied(rule_id, name, created)
+            skipped = _skipped_field_warnings(created)
             # Sort by the checked parameter so fails cluster; group for
             # uniqueness. v1.5-R6 (3.2): pass the recipe's real schedule filters
             # through — empty for a recipe that can't express one.
@@ -351,13 +367,15 @@ async def create_verification_schedules(
                 filters=list(recipe.schedule.filters) or None,
                 dry_run=dry_run,
             )
-            warnings = _configure_warnings(configured)
+            warnings = skipped + _configure_warnings(configured)
             detail = _configuration_notes(recipe, warnings)
             if renamed:
                 rename_note = (
                     f"addin applied a different name than requested "
-                    f"(requested {name!r}, got {actual_name!r}) — see "
-                    f"the add-in renamed it silently."
+                    f"(requested {name!r}, got {actual_name!r}). Only an "
+                    f"addin older than v0.8.36 does this; update the "
+                    f"RevitMCPServer addin and the name is either applied or "
+                    f"refused with a reason."
                 )
                 detail = f"{detail} {rename_note}" if detail else rename_note
             results.append(ScheduleResult(
@@ -407,6 +425,39 @@ async def create_verification_schedules(
     return results
 
 
+def _skipped_field_warnings(created: Any) -> list[str]:
+    """Turn ``create_schedule``'s ``skippedFields`` into result warnings.
+
+    Same failure class as the silent rename, one call earlier: a requested
+    column whose name matches no schedulable field used to be dropped without
+    a word, so the schedule came back "created" with a column missing — the
+    one a reviewer needed to re-check the rule by eye. RevitMCPServer v0.8.36
+    reports those names in ``skippedFields`` (``addedFields`` unchanged).
+
+    Older addins send no such key, which reads as "nothing skipped" — the
+    pre-0.8.36 behaviour we cannot see past, not a claim that every field
+    landed. Entries are field names; a dict entry is read by its ``name`` or
+    ``field`` key, and anything else is skipped rather than guessed at.
+    """
+    if not isinstance(created, dict):
+        return []
+    raw = created.get("skippedFields")
+    if not isinstance(raw, list):
+        return []
+    names: list[str] = []
+    for entry in raw:
+        if isinstance(entry, str) and entry.strip():
+            names.append(entry.strip())
+        elif isinstance(entry, dict):
+            label = entry.get("name") or entry.get("field")
+            if isinstance(label, str) and label.strip():
+                names.append(label.strip())
+    return [
+        f"field {n!r} is not schedulable for this category — column not added"
+        for n in names
+    ]
+
+
 def _configure_warnings(configured: Any) -> list[str]:
     """Pull ``configure_schedule``'s ``warnings`` out of an OK envelope's data.
 
@@ -430,7 +481,13 @@ def _check_name_applied(
     """LIVE PROBE 2026-07-12 (addin v0.8.13, F1/F3) honesty-check: the addin
     can silently apply a DIFFERENT name than the one we asked for (forbidden
     characters, or a duplicate the primary probe didn't catch) instead of
-    erroring. Returns ``(actual_name, renamed)`` — ``actual_name`` falls back
+    erroring.
+
+    Addin v0.8.36+ refuses those names with an error instead, so against a
+    current addin this never reports a rename. It stays because the add-in
+    is installed per machine and upgraded on its own schedule — an office
+    still on an older build would otherwise get a schedule under a name we
+    never chose, recorded as ours. Returns ``(actual_name, renamed)`` — ``actual_name`` falls back
     to ``requested`` when the addin's response carries no name at all (older
     addin / degraded envelope), which is treated as "not renamed" rather than
     guessed at.
@@ -509,10 +566,11 @@ def render_manifest_markdown(results: list[ScheduleResult]) -> str:
     if counts["created_renamed"]:
         lines.append(
             "> Renamed rules: the addin applied a DIFFERENT schedule name than "
-            "requested (silent fallback — see "
-            "the add-in renames silently). The `Name` "
-            "column above is the ACTUAL name; look it up under that, not the "
-            "`AutoAudit - <rule_id>` convention."
+            "requested — the silent fallback of RevitMCPServer addins older "
+            "than v0.8.36. The `Name` column above is the ACTUAL name; look it "
+            "up under that, not the `AutoAudit - <rule_id>` convention. "
+            "Updating the addin replaces the silent rename with an explicit "
+            "error."
         )
     return "\n".join(lines)
 

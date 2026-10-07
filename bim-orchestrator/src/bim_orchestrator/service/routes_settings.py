@@ -23,6 +23,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import structlog
 from fastapi import APIRouter, HTTPException
 
 from bim_orchestrator.llm.factory import llm_provider
@@ -32,6 +33,7 @@ from bim_orchestrator.service.models import (
     DoctorResponse,
     EnvItem,
     LlmStatus,
+    ProjectSelection,
     PutEnvRequest,
     PutEnvResponse,
     ServicesStatus,
@@ -40,10 +42,12 @@ from bim_orchestrator.service.models import (
     TestRevitResponse,
 )
 
+log = structlog.get_logger(__name__)
+
 # ── allowlist ────────────────────────────────────────────────────────────────
 
 _ALLOW_EXACT = {"ANTHROPIC_API_KEY", "RULES_REMOTE_MANIFEST"}
-_ALLOW_PREFIXES = ("FORMA_", "APS_", "BIM_")
+_ALLOW_PREFIXES = ("FORMA_", "APS_", "BIM_", "DEMO_")
 
 # Always surfaced in GET /settings (even when unset, so the UI has fields to
 # fill in) — the keys this app actually reads, per streamlit_app/app.py's
@@ -60,7 +64,37 @@ _KNOWN_KEYS = (
     "BIM_EXTRACTION_MODEL",
     "BIM_LLM_MAX_CALLS",
     "RULES_REMOTE_MANIFEST",
+    "DEMO_PROJECT_ID",
+    "DEMO_AECDM_PROJECT_ID",
+    "DEMO_ELEMENT_GROUP_ID",
 )
+
+
+# ── the project selection (v1.7-R25) ───────────────────────────────────────
+#
+# These six are the ONLY keys this module writes into ``os.environ`` as well
+# as into ``.env``. Everything else deliberately does not (see put_env): the
+# rest of the allowlist is credentials and paths that a CHILD process reads
+# when it is spawned, so a file write is the whole job and mutating the
+# parent's environment would only hide a stale value.
+#
+# The project is different in kind. It is a user's CHOICE, and the service
+# runs audits IN-PROCESS: ``orchestrator.run`` / ``run_revit`` / ``apply``
+# each read ``os.environ.get("DEMO_PROJECT_ID")`` at the moment they run. Set
+# only the file and "switch project" quietly means "switch project, then
+# restart the service" — the exact promise the Setup card is there to keep.
+# Streamlit never hit this because it spawns a subprocess with its own env.
+#
+# ORDER matters below only for readability; the write is one key at a time.
+_PROJECT_ENV_KEYS: dict[str, str] = {
+    # response field -> env key
+    "hub_id": "DEMO_HUB_ID",
+    "project_id": "DEMO_PROJECT_ID",
+    "aecdm_project_id": "DEMO_AECDM_PROJECT_ID",
+    "element_group_id": "DEMO_ELEMENT_GROUP_ID",
+    "project_name": "DEMO_PROJECT_NAME",
+    "element_group_name": "DEMO_ELEMENT_GROUP_NAME",
+}
 
 
 # Env keys are UPPER_SNAKE only. Checked BEFORE the allowlist: a key like
@@ -265,6 +299,52 @@ def build_settings_router(config_dir: Path) -> APIRouter:
             )
         _upsert_env_file(_target_env_path(req.key, config_dir), req.key, req.value)
         return PutEnvResponse(ok=True)
+
+    @router.get("/settings/project", response_model=ProjectSelection)
+    async def get_project() -> ProjectSelection:
+        """The currently selected ACC/Forma project, unmasked.
+
+        A project id is not a secret — it is in the ACC URL — and the Setup
+        card has to be able to show the operator what is actually selected,
+        including after a reload. ``os.environ`` wins over the file so a
+        selection saved in this process reads back immediately.
+        """
+        root_values = _parse_env_file(_root_env_path(config_dir))
+        return ProjectSelection(**{
+            field: os.environ.get(key) or root_values.get(key, "")
+            for field, key in _PROJECT_ENV_KEYS.items()
+        })
+
+    @router.put("/settings/project", response_model=ProjectSelection)
+    async def put_project(req: ProjectSelection) -> ProjectSelection:
+        """Write the selection to the root ``.env`` AND this process's env.
+
+        The body is written VERBATIM — all six keys, every time. That is what
+        makes the DoD's "switching project must not carry the old model over"
+        hold without a special case: a body naming a different
+        ``aecdm_project_id`` and no ``element_group_id`` writes an EMPTY
+        ``DEMO_ELEMENT_GROUP_ID``, so an ``apply``/``check`` run against the
+        new project cannot silently query the previous project's model.
+        """
+        values = {key: getattr(req, field) for field, key in _PROJECT_ENV_KEYS.items()}
+        # Same line-oriented hazard put_env guards: a newline in any value
+        # would smuggle an extra key=value line into .env.
+        for key, value in values.items():
+            if "\n" in value or "\r" in value:
+                raise HTTPException(
+                    status_code=400, detail=f"{key} must not contain newlines"
+                )
+        path = _root_env_path(config_dir)
+        for key, value in values.items():
+            _upsert_env_file(path, key, value)
+            os.environ[key] = value
+        log.info(
+            "service.project_selected",
+            project=values["DEMO_PROJECT_NAME"] or values["DEMO_PROJECT_ID"],
+            element_group=values["DEMO_ELEMENT_GROUP_NAME"]
+            or values["DEMO_ELEMENT_GROUP_ID"],
+        )
+        return req
 
     @router.post("/settings/test/forma", response_model=TestConnectionResponse)
     async def test_forma() -> TestConnectionResponse:

@@ -41,8 +41,10 @@ whole system fall back to the deterministic Phase-1 pipeline with the flags stil
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import os
+from collections.abc import Iterator, Mapping
 from types import ModuleType
 from typing import Any
 
@@ -206,6 +208,39 @@ _FALSY = {"0", "false", "no", "n", "off", "disable", "disabled"}
 _TRUTHY_EXTRA = {"y", "t", "enable", "enabled"}
 
 _AGENT_FLAGS = ("BIM_LLM_REMEDIATION", "BIM_LLM_DIAGNOSTIC", "BIM_LLM_SUPERVISOR")
+
+
+@contextlib.contextmanager
+def agent_flag_overrides(overrides: Mapping[str, str]) -> Iterator[None]:
+    """Set agent flags in ``os.environ`` for the duration of one run, then put
+    back exactly what was there (including "unset").
+
+    Why a scoped override and not a permanent ``.env`` line: every reader of
+    these flags (``build_llm_run_context``, ``make_*_agent``, ``_stamp_llm_status``)
+    reads ``os.environ`` at call time, so a process-wide flag switches the AI
+    layer on for EVERY audit that process runs — the AuditHub service runs
+    many, most of them recordings that must stay deterministic and cost
+    nothing. An audit profile is the unit an operator picks; this lets the
+    profile carry the choice (``AuditProfile.llm``) and leave the process alone.
+
+    Only the three agent flags may be overridden — anything else is a
+    programming error, not a configuration, and is refused before the run.
+    An empty mapping is a no-op, so callers need no special case.
+    """
+    unknown = sorted(set(overrides) - set(_AGENT_FLAGS))
+    if unknown:
+        raise ValueError(f"not an agent flag: {', '.join(unknown)}")
+    saved = {k: os.environ.get(k) for k in overrides}
+    try:
+        for k, v in overrides.items():
+            os.environ[k] = v
+        yield
+    finally:
+        for k, old in saved.items():
+            if old is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = old
 
 
 def _enabled(env_var: str) -> bool:

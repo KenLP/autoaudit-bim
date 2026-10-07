@@ -502,86 +502,26 @@ def _write_forma_env(forma_dir: str, values: dict[str, str]) -> None:
     env_path.write_text("\n".join(result) + "\n", encoding="utf-8")
 
 
+# The two parsers below moved into `mcp_clients/forma.py` (v1.7-R25) when the
+# web UI grew its own project picker: parsing the AECDM tools' text output is
+# the MCP client's job, and two copies would drift apart the next time Forma
+# changes that format. These wrappers keep Streamlit's tuple shapes so the
+# rest of this file (and its tests) are untouched.
+
+
 def _parse_mcp_name_id_list(raw: object) -> list[tuple[str, str]]:
-    """Parse AECDM list tool response into [(id, name)] pairs.
+    """[(id, name)] — see :func:`mcp_clients.forma.parse_name_id_list`."""
+    from bim_orchestrator.mcp_clients.forma import parse_name_id_list
 
-    AECDM tools (list_aecdm_projects, list_element_groups, etc.) return a
-    list[TextContent] where each item's .text is a human-readable plain-text
-    table, NOT JSON. Live format observed (2026-06-11):
-
-        Found N AEC project(s):
-
-        🏢 Project Name  (ID: urn:adsk.workspace:prod.project:<uuid>)
-
-    We parse the ``(ID: <value>)`` pattern and use the preceding text on the
-    same line as the display name (emoji stripped).
-    """
-    import re
-
-    id_re = re.compile(r'\(ID:\s*([^)]+)\)')
-    # Strip leading emoji (Unicode block) + whitespace from name portion
-    emoji_re = re.compile(r'^[\U00010000-\U0010ffff\U00002600-\U000027ff\s\xa0]+')
-
-    pairs: list[tuple[str, str]] = []
-    items_raw = raw if isinstance(raw, list) else [raw]
-    for item in items_raw:
-        text = getattr(item, "text", None)
-        if text is None:
-            text = str(item)
-        for line in text.splitlines():
-            m = id_re.search(line)
-            if not m:
-                continue
-            eid = m.group(1).strip()
-            name_part = line[:m.start()]
-            name_part = emoji_re.sub("", name_part).strip().rstrip()
-            if not name_part:
-                name_part = eid[:40]
-            pairs.append((eid, name_part))
-    return pairs
+    return [(e.id, e.name) for e in parse_name_id_list(raw)]
 
 
 def _parse_aecdm_projects(raw: object) -> list[tuple[str, str, str]]:
-    """Parse ``aecdm_list_projects`` into ``[(aecdm_id, dm_id, name)]``.
+    """[(aecdm_id, dm_id, name)] — see
+    :func:`mcp_clients.forma.parse_aecdm_projects`."""
+    from bim_orchestrator.mcp_clients.forma import parse_aecdm_projects
 
-    Forma's dual-id format (2026-06-19) returns BOTH project ids per project,
-    so the picker resolves the AECDM URN (for element queries) AND the
-    DM/Issues id (``b.<uuid>``, for issues_* / dm_* / reviews_*) from ONE call —
-    no name-matching, no hard-coded id. Live shape::
-
-        • <name>
-            AECDM id: urn:adsk.workspace:prod.project:<uuid>
-            DM/Issues id: b.<uuid>
-
-    ``dm_id`` is ``""`` when a project has no linked DM/Issues container.
-    """
-    items_raw = raw if isinstance(raw, list) else [raw]
-    out: list[tuple[str, str, str]] = []
-    name: str | None = None
-    aecdm_id = ""
-    dm_id = ""
-
-    def _flush() -> None:
-        nonlocal name, aecdm_id, dm_id
-        if name and aecdm_id:
-            out.append((aecdm_id, dm_id, name))
-        name, aecdm_id, dm_id = None, "", ""
-
-    for item in items_raw:
-        text = getattr(item, "text", None)
-        if text is None:
-            text = str(item)
-        for line in text.splitlines():
-            s = line.strip()
-            if s.startswith("•"):                 # • new project block
-                _flush()
-                name = s.lstrip("•").strip()
-            elif s.startswith("AECDM id:"):
-                aecdm_id = s.split(":", 1)[1].strip()
-            elif s.startswith("DM/Issues id:"):
-                dm_id = s.split(":", 1)[1].strip()
-    _flush()
-    return out
+    return [(p.aecdm_id, p.dm_id, p.name) for p in parse_aecdm_projects(raw)]
 
 
 # UX: hard wall-clock cap on the Forma browse calls. The MCP handshake can hang

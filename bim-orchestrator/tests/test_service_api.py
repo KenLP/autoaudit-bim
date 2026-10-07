@@ -696,3 +696,104 @@ class TestCliWarnsInsteadOfBlocking:
         monkeypatch.setattr(orch, "DEFAULT_RUNS_DIR", runs)
 
         orch._warn_if_service_busy("audit")   # must not raise
+
+
+class TestProbeForma:
+    """`probe_forma` drives the UI's Forma dot and /api/health `axes.forma`.
+
+    Regression guard for the 2026-09-13 macOS finding: the probe looked for
+    `vendor/forma-mcp/forma-mcp.exe` — a Windows filename — so every
+    non-Windows install reported Forma "disconnected" while it was in fact
+    connected via the `node dist/index.js` fallback. The probe must ask the
+    SAME resolver the client uses, not guess one filename.
+    """
+
+    @staticmethod
+    def _clear_forma_env(monkeypatch: pytest.MonkeyPatch) -> None:
+        for key in (
+            "FORMA_MCP_SERVER_CMD",
+            "FORMA_MCP_SERVER_ARGS",
+            "FORMA_MCP_SERVER_CWD",
+        ):
+            monkeypatch.delenv(key, raising=False)
+
+    def test_node_fallback_counts_as_available(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The non-Windows path: a real node + a real dist/index.js."""
+        node = tmp_path / "node"
+        node.write_text("#!/bin/sh\n")
+        entrypoint = tmp_path / "server" / "dist" / "index.js"
+        entrypoint.parent.mkdir(parents=True)
+        entrypoint.write_text("// server")
+
+        self._clear_forma_env(monkeypatch)
+        monkeypatch.setenv("FORMA_MCP_SERVER_CMD", str(node))
+        monkeypatch.setenv("FORMA_MCP_SERVER_ARGS", str(entrypoint))
+        monkeypatch.setenv("FORMA_MCP_SERVER_CWD", str(tmp_path))
+
+        assert app_module.probe_forma() is True
+
+    def test_relative_entrypoint_resolves_against_cwd(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`dist/index.js` is relative — resolve it the way the subprocess will."""
+        node = tmp_path / "node"
+        node.write_text("#!/bin/sh\n")
+        cwd = tmp_path / "vendor" / "forma-mcp"
+        (cwd / "dist").mkdir(parents=True)
+        (cwd / "dist" / "index.js").write_text("// server")
+
+        self._clear_forma_env(monkeypatch)
+        monkeypatch.setenv("FORMA_MCP_SERVER_CMD", str(node))
+        monkeypatch.setenv("FORMA_MCP_SERVER_ARGS", "dist/index.js")
+        monkeypatch.setenv("FORMA_MCP_SERVER_CWD", str(cwd))
+
+        assert app_module.probe_forma() is True
+
+    def test_missing_entrypoint_is_unavailable(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A command that exists but a script that does not → not launchable."""
+        node = tmp_path / "node"
+        node.write_text("#!/bin/sh\n")
+
+        self._clear_forma_env(monkeypatch)
+        monkeypatch.setenv("FORMA_MCP_SERVER_CMD", str(node))
+        monkeypatch.setenv("FORMA_MCP_SERVER_ARGS", str(tmp_path / "nope.js"))
+        monkeypatch.setenv("FORMA_MCP_SERVER_CWD", str(tmp_path))
+
+        assert app_module.probe_forma() is False
+
+    def test_missing_command_is_unavailable(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An absolute command path that isn't there → not launchable."""
+        entrypoint = tmp_path / "index.js"
+        entrypoint.write_text("// server")
+
+        self._clear_forma_env(monkeypatch)
+        monkeypatch.setenv("FORMA_MCP_SERVER_CMD", str(tmp_path / "no-such-node"))
+        monkeypatch.setenv("FORMA_MCP_SERVER_ARGS", str(entrypoint))
+        monkeypatch.setenv("FORMA_MCP_SERVER_CWD", str(tmp_path))
+
+        assert app_module.probe_forma() is False
+
+    def test_sea_exe_still_counts(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The Windows path must keep working: vendored exe, no args.
+
+        With no ``FORMA_MCP_SERVER_CWD`` set, ``from_env`` takes the SEA
+        branch — exe as command, empty args — so this exercises the case the
+        old probe was the only one covering.
+        """
+        from bim_orchestrator.mcp_clients import forma as forma_module
+
+        exe = tmp_path / "forma-mcp.exe"
+        exe.write_text("MZ")
+
+        self._clear_forma_env(monkeypatch)
+        monkeypatch.setattr(forma_module, "_vendor_exe", lambda _name: str(exe))
+
+        assert app_module.probe_forma() is True

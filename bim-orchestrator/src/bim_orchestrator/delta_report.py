@@ -79,6 +79,12 @@ def find_baseline(runs_root: Path, current_dir: Path) -> Path | None:
         meta = _read_json(folder / "metadata.json")
         if meta is None:
             continue
+        if meta.get("demo"):
+            # A CLI --demo run has no profile.json and mode "run-revit" —
+            # exactly the identity of a bare --run-revit — so without this
+            # it would become the baseline of the next real run and the
+            # delta would read every real finding as "new since".
+            continue
         if meta.get("status") not in SUCCESSFUL_STATUSES:
             continue
         started = meta.get("started_at") or ""

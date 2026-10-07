@@ -12,83 +12,28 @@ disk. It reuses the same streamlit-stub fixture as tests/test_streamlit_argv.py.
 
 from __future__ import annotations
 
-import sys
-import types
 from pathlib import Path
 
 import pytest
 
 from bim_orchestrator import rule_builder_core as rbc
+from tests.test_streamlit_argv import _import_app
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-STREAMLIT_APP_DIR = REPO_ROOT / "streamlit_app"
 
 
 # ── S1 golden (Streamlit save path, unchanged through B16) ─────────────────
 
 
-class _MockStreamlit:
-    """Same stub as tests/test_streamlit_argv.py — see that file for rationale."""
-
-    def __init__(self) -> None:
-        self.session_state: dict = {}
-
-    def columns(self, spec, **kwargs):
-        n = spec if isinstance(spec, int) else len(spec)
-        return tuple(_Proxy() for _ in range(n))
-
-    def tabs(self, names, **kwargs):
-        return [_Proxy() for _ in names]
-
-    def number_input(self, label, *args, **kwargs):
-        return kwargs.get("value", 0)
-
-    def __getattr__(self, name):
-        return _Proxy()
-
-
-class _Proxy:
-    def __call__(self, *args, **kwargs):
-        return _Proxy()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-    def __iter__(self):
-        return iter([_Proxy() for _ in range(8)])
-
-    def __len__(self):
-        return 8
-
-    def __getitem__(self, key):
-        return _Proxy()
-
-    def __bool__(self):
-        return False
-
-    def __getattr__(self, name):
-        return _Proxy()
-
-
 @pytest.fixture
-def app_module():
-    """Import streamlit_app/app.py with a stubbed streamlit module."""
-    fake_st = _MockStreamlit()
-    sys.modules["streamlit"] = fake_st  # type: ignore[assignment]
+def app_module(tmp_path):
+    """Import streamlit_app/app.py with a stubbed streamlit module.
 
-    fake_dotenv = types.ModuleType("dotenv")
-    fake_dotenv.load_dotenv = lambda *a, **k: None  # type: ignore[attr-defined]
-    sys.modules.setdefault("dotenv", fake_dotenv)
-
-    sys.path.insert(0, str(STREAMLIT_APP_DIR))
-    import importlib
-
-    if "app" in sys.modules:
-        del sys.modules["app"]
-    return importlib.import_module("app")
+    Shared with tests/test_streamlit_argv.py rather than copied: the copy that
+    lived here kept writing the tracked runs/trend.md after that file's fixture
+    was fixed, because the import-time trend write is redirected inside
+    ``_import_app`` and nowhere else."""
+    return _import_app(tmp_path / "trend_sandbox")
 
 
 # Captured 2026-07-12 from the PRE-B16 Streamlit save path (app._save_rule_to_yaml
